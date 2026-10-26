@@ -260,10 +260,18 @@ function setNet(name, info) {
   viewer.mark(parts);
   inspector.setNet(net ? { name: net, pads: p?.pads, vias: p?.vias, track_mm: p?.track_mm, pins: q?.pins, labels: q?.labels, parts } : null);
 }
-const canFlat = () => board.kind !== "new" && !board.local && (board.live || api.status.mock || !api.hasBackend());
+// which flat views a board has: Etch's own builds both (from the backend), a library board the ones prerendered for it
+// (meta.views, library/flat_views.py), the demo data any board in mock mode
+const canFlat = (v) => {
+  if (board.kind === "new" || board.local) return false;
+  if (board.live || Q.get("mock") === "1") return true;
+  const vs = board.meta?.views;
+  if (!Array.isArray(vs)) return api.status.mock || !api.hasBackend();
+  return v === "plan" ? vs.includes("pcb2d") : v === "sch" ? vs.includes("schematic") : vs.length > 0;
+};
 function setView(mode, { fromUrl = false } = {}) {
-  if (mode !== "3d" && !canFlat()) {
-    toast(board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first.") : "A board opened from a file has no flat view.");
+  if (mode !== "3d" && !canFlat(mode)) {
+    toast(board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first.") : board.local ? "A board opened from a file has no flat view." : mode === "sch" ? "This board's schematic isn't in the library." : "This board has no flat view yet.");
     segSync("3d"); return;
   }
   const was = viewMode; viewMode = mode;
@@ -280,10 +288,10 @@ function segSync(mode) { if (mode) viewTabs.set(mode); }
 // the 2D and Schematic segments wait for a board Etch built
 function paintViewSeg() {
   for (const b of $("viewSeg").querySelectorAll("[data-value]")) {
-    const off = b.dataset.value !== "3d" && !canFlat();
+    const off = b.dataset.value !== "3d" && !canFlat(b.dataset.value);
     b.setAttribute("aria-disabled", off ? "true" : "false");
     if (!b.dataset.title) b.dataset.title = b.title;
-    b.title = off ? (board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first") : "Shows on boards Etch builds") : b.dataset.title;
+    b.title = off ? (board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first") : b.dataset.value === "sch" && board.meta?.views ? "This board's schematic isn't in the library (KiCad 5, or split over several sheets)" : "Shows on boards Etch builds") : b.dataset.title;
   }
 }
 $("cw").addEventListener("dblclick", () => { viewer.reset(); segSync("3d"); });
@@ -906,7 +914,7 @@ async function main() {
   document.body.classList.add("ready");
   if (Q.get("sel")) setSel(Q.get("sel").split(","), { focus: true });
   paintViewSeg();
-  if (["plan", "sch"].includes(Q.get("view")) && canFlat()) setView(Q.get("view"), { fromUrl: true });
+  if (["plan", "sch"].includes(Q.get("view")) && canFlat(Q.get("view"))) setView(Q.get("view"), { fromUrl: true });
   if (!board.live) remember(ID);
   if (Q.get("remix") === "1") askChange();
   if (RESUME && RESUME.board === ID) bridge.resume(RESUME);

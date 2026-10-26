@@ -399,6 +399,46 @@ def _footprint(n, nets: dict[int, str]) -> dict | None:
     }
 
 
+def chain_outline(items: list[dict], tol: float = 0.01) -> list[dict]:
+    """Edge.Cuts as closed loops. KiCad stores a board's edge as separate lines and arcs (Etch's engine writes it
+    that way too), which draw fine but fill nothing; joined end to end they give the board's real shape, holes and
+    cutouts included (the page fills them even-odd). Pieces that never meet stay as they are."""
+    segs = [list(zip(g["pts"][0::2], g["pts"][1::2])) for g in items if len(g["pts"]) >= 4]
+    width = max((g.get("w", 0.1) for g in items), default=0.1)
+    near = lambda a, b: abs(a[0] - b[0]) <= tol and abs(a[1] - b[1]) <= tol
+    loops: list[list[tuple[float, float]]] = []
+    while segs:
+        cur = segs.pop(0)
+        grown = True
+        while grown and not (len(cur) > 2 and near(cur[0], cur[-1])):
+            grown = False
+            for i, sg in enumerate(segs):
+                if near(cur[-1], sg[0]):
+                    cur += sg[1:]
+                elif near(cur[-1], sg[-1]):
+                    cur += sg[-2::-1]
+                elif near(cur[0], sg[-1]):
+                    cur = sg[:-1] + cur
+                elif near(cur[0], sg[0]):
+                    cur = sg[:0:-1] + cur
+                else:
+                    continue
+                segs.pop(i)
+                grown = True
+                break
+        loops.append(cur)
+    # the largest loop first (the board), then cutouts and holes
+    loops.sort(
+        key=lambda lp: (
+            -(max(q[0] for q in lp) - min(q[0] for q in lp)) * (max(q[1] for q in lp) - min(q[1] for q in lp))
+        )
+    )
+    return [
+        {"w": width, "pts": [_r(v) for q in lp for v in q], "closed": len(lp) > 2 and near(lp[0], lp[-1])}
+        for lp in loops
+    ]
+
+
 def parse_pcb(text: str) -> dict:
     """pcb2d's data from a .kicad_pcb's text (KiCad 5 to 10 files)."""
     doc = sexpr.parse(text)
@@ -491,6 +531,7 @@ def parse_pcb(text: str) -> dict:
                     polys.append({"side": _side(_layer(fp) or _layer(n)), "pts": [_r(v) for xy in pts for v in xy]})
             if polys:
                 zones.append({"net": name, "polys": polys})
+    outline = chain_outline(outline)
     # the board's box: the edge cuts, else everything that is on it
     xs: list[float] = []
     ys: list[float] = []

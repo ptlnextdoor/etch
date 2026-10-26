@@ -113,3 +113,27 @@ test("the hover tag names pads, tracks and vias", async ({ page }) => {
   await page.locator(".pv .via").first().hover({ force: true });
   await expect(page.locator("#htag")).toHaveText(/Via · LED_A · 0.3 mm drill/);
 });
+
+// a real library board, no backend and no demo data: its own prerendered views (library/flat_views.py)
+test("a library board shows its own 2D board and schematic @phone", async ({ page }) => {
+  await page.route("**/config.json", (r) => r.fulfill({ contentType: "application/json", body: "{}" }));
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/board.html?id=" + encodeURIComponent("gh:OLIMEX/ESP32-POE/HARDWARE/ESP32-PoE-hardware-revision-M2"));
+  await page.waitForSelector("body.ready", { timeout: 30000 });
+  await page.click('#viewSeg [data-value="plan"]');
+  await expect(page.locator(".pv .fp")).toHaveCount(143, { timeout: 15000 });
+  await expect(page.locator(".pv-dim.w")).toHaveText("28.0 mm");
+  await page.click('#viewSeg [data-value="sch"]');
+  await expect(page.locator(".schv .sym").first()).toBeVisible({ timeout: 15000 });
+  expect(await page.locator(".schv .sym").count()).toBeGreaterThan(100);
+  expect(errors).toEqual([]);
+});
+
+test("a library board without a schematic keeps that segment off", async ({ page }) => {
+  await page.route("**/config.json", (r) => r.fulfill({ contentType: "application/json", body: "{}" }));
+  await page.goto("/board.html?id=" + encodeURIComponent("gh:im-tomu/tomu-hardware/pcb"));
+  await page.waitForSelector("body.ready", { timeout: 30000 });
+  await expect(page.locator('#viewSeg [data-value="plan"]')).toHaveAttribute("aria-disabled", "false");
+  await expect(page.locator('#viewSeg [data-value="sch"]')).toHaveAttribute("aria-disabled", "true");
+});

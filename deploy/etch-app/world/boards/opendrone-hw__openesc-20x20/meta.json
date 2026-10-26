@@ -53,5 +53,9 @@
   ]
  },
  "rendered": "2026-10-17T18:08:37Z",
- "kicad": "10.0.7"
+ "kicad": "10.0.7",
+ "views": [
+  "pcb2d",
+  "schematic"
+ ]
 }

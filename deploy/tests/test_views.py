@@ -117,6 +117,25 @@ class Board(Fixture):
         os.utime(pcb, (now + 5, now + 5))
         self.assertEqual(views.pcb2d(RUN)["silk"][0]["text"], "ETCH NIGHT LIGHT")
 
+    def test_edge_lines_are_joined_into_one_closed_outline(self):
+        # four separate gr_lines, out of order and one reversed, as KiCad and Etch's engine store an edge
+        text = """(kicad_pcb (version 20241229)
+  (gr_line (start 0 0) (end 30 0) (layer "Edge.Cuts") (stroke (width 0.1)))
+  (gr_line (start 30 20) (end 0 20) (layer "Edge.Cuts") (stroke (width 0.1)))
+  (gr_line (start 30 20) (end 30 0) (layer "Edge.Cuts") (stroke (width 0.1)))
+  (gr_line (start 0 20) (end 0 0) (layer "Edge.Cuts") (stroke (width 0.1)))
+  (gr_circle (center 5 5) (end 6 5) (layer "Edge.Cuts") (stroke (width 0.1))))"""
+        b = views.parse_pcb(text)
+        self.assertEqual(len(b["outline"]), 2)  # the board, then the round cutout
+        board = b["outline"][0]
+        self.assertTrue(board["closed"])
+        self.assertEqual(len(board["pts"]), 10)  # 5 points, the first repeated at the end
+        self.assertEqual(
+            set(zip(board["pts"][0::2], board["pts"][1::2])), {(0.0, 0.0), (30.0, 0.0), (30.0, 20.0), (0.0, 20.0)}
+        )
+        self.assertTrue(b["outline"][1]["closed"])
+        self.assertEqual(b["box"], [0.0, 0.0, 30.0, 20.0])
+
     def test_old_kicad_5_files_parse_too(self):
         text = """(kicad_pcb (version 20171130) (host pcbnew 5.0.1)
   (net 0 "") (net 1 GND)

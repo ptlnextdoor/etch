@@ -1,7 +1,7 @@
 // Client for Etch's board endpoints (deploy/EXPLORE_API.md section 2). API base: ?api= or config.json (which may point at config_url, the live backend URL that the tunnel publishes).
 // Falls back to mock-api.js with ?mock=1, when no API base is configured, or when an endpoint is missing (404).
 // When the configured engine can't be reached, calls throw an error marked `offline` instead of answering with demo text.
-import { Q } from "./common.js";
+import { Q, WORLD, slugOf } from "./common.js";
 import * as mock from "./mock-api.js";
 
 let API = "", ready = null;
@@ -133,6 +133,13 @@ export function tts(text) {
 // empty state. With ?mock=1 or no backend, the demo build's data (fixtures/views/*.json) stands in for any board.
 export async function view(kind, run) {
   await init();
+  // a library board: its views were prerendered next to its 3D model (library/flat_views.py); it has no stats
+  if (/^gh:/.test(String(run)) && Q.get("mock") !== "1") {
+    if (kind === "stats") throw Object.assign(new Error("not found"), { status: 404 });
+    const r = await fetch(`${WORLD}boards/${slugOf(run)}/${kind === "schematic" ? "schematic" : "pcb2d"}.json`);
+    if (!r.ok) throw Object.assign(new Error("not found"), { status: 404 });
+    return r.json();
+  }
   if (status.mock || !API) return fetch(`fixtures/views/${kind}.json`).then((r) => { if (!r.ok) throw Object.assign(new Error("not found"), { status: 404 }); return r.json(); });
   const r = await backend(`/etch/${kind}?id=${encodeURIComponent(run)}`);
   return parse(r);

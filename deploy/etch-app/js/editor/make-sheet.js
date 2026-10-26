@@ -112,7 +112,8 @@ export function createMakeSheet(stage, { api, board, viewer = null, download, to
     return "";
   }
   // an Etch build (or, with no engine, the demo build standing in for any board)
-  const engine = () => !!board.live || (api?.status?.mock === true && !board.local && board.kind !== "new");
+  // an Etch build (or, in ?mock=1, the demo build standing in for any board); a library board reads its own files
+  const engine = () => !!board.live || (new URLSearchParams(location.search).get("mock") === "1" && !board.local && board.kind !== "new");
   const sigOf = () => [board.id, board.kind, !!board.live, !!board.local, !!board.building].join("|");
 
   // ---------- the top-bar button ----------
@@ -149,7 +150,7 @@ export function createMakeSheet(stage, { api, board, viewer = null, download, to
     const eng = engine();
     // this board: the mini plan (Etch builds only), the size, the numbers
     const dim = h("div", { class: "mk-dim" }), dsub = h("div", { class: "mk-dsub" });
-    const miniEl = mini && eng ? h("div", { class: "mk-mini", "aria-hidden": "true" }) : null;
+    const miniEl = mini && (eng || board.meta?.views?.includes?.("pcb2d")) ? h("div", { class: "mk-mini", "aria-hidden": "true" }) : null;
     const nums = h("dl", { class: "in-rows mk-nums" }), dd = {};
     for (const [k, label] of NUMS) { dd[k] = h("dd", {}); nums.append(h("dt", {}, label), dd[k]); }
     const sBoard = section("mk-board", h("h3", { class: "nb-sl" }, "This board"), h("div", { class: "mk-size" }, miniEl, h("div", { class: "mk-dimw" }, dim, dsub)), nums);
@@ -425,6 +426,26 @@ export function createMakeSheet(stage, { api, board, viewer = null, download, to
     setPill("");
     data = { id: board.id }; loading = false;
     paintButton();
+    // the board's own file (prerendered 2D view): the mini plan and the numbers it can say
+    if (ui.miniEl) {
+      const g = gen;
+      paintMini(g);
+      pcb.p?.then((d) => { if (g === gen && d) for (const [k, v] of Object.entries(countsOf(d))) setNum(k, v); }, () => {});
+    }
+  }
+  // what a board file says about itself, the way deploy/views.py compute_stats counts it
+  function countsOf(d) {
+    const parts = (d.parts || []).filter((p) => p.part);
+    let mm = 0;
+    for (const t of d.tracks || []) for (let i = 0; i + 3 < t.pts.length; i += 2) mm += Math.hypot(t.pts[i + 2] - t.pts[i], t.pts[i + 3] - t.pts[i + 1]);
+    const nets = new Set();
+    for (const p of parts) for (const q of p.pads || []) if (q.net) nets.add(q.net);
+    return {
+      parts: parts.length, smd: parts.filter((p) => p.smd).length, tht: parts.filter((p) => !p.smd).length,
+      pads: parts.reduce((n, p) => n + (p.pads || []).length, 0), vias: (d.vias || []).length, tracks: (d.tracks || []).length,
+      track_mm: Math.round(mm * 10) / 10, nets: nets.size,
+      holes: (d.parts || []).filter((p) => !p.part && (p.pads || []).some((q) => q.drill)).length,
+    };
   }
   // the 112 × 76 mini plan (main.js's renderer), from GET /etch/pcb2d; no plan, no slot
   function paintMini(g) {

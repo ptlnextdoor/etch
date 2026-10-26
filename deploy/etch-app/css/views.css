@@ -48,7 +48,7 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .pv.lod-grid .grid-1 { display: none; }
 .pv[data-mini="1"] .pv-grid { display: none; }
 /* the board slab */
-.pv .board { fill: var(--pcb-mask); stroke: none; filter: drop-shadow(0 6px 11px var(--pcb-shadow)); transition: fill .3s; }
+.pv .board { fill: var(--pcb-mask); fill-rule: evenodd; stroke: none; filter: drop-shadow(0 6px 11px var(--pcb-shadow)); transition: fill .3s; }
 .pv .lip { fill: none; stroke: var(--pcb-mask-lip); stroke-width: 1.4; pointer-events: none; }
 .pv.moving .board, .pv[data-mini="1"] .board { filter: none; }
 .pv .edge { fill: none; stroke: var(--pcb-edge); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }

@@ -10,6 +10,7 @@ python3 library/fetch.py                 # pcb, project, schematics, every 3D mo
 python3 library/render.py                # kicad-cli GLB + raytraced thumb + parts.json + meta.json
 python3 library/build_index.py --prune   # deploy/etch-app/world/index.json + library/manifest.json
 python3 library/verify.py                # check every rendered board (files, GLB units, parts -> GLB nodes)
+python3 library/flat_views.py            # the editor's 2D board + schematic per board (pcb2d.json, schematic.json)
 ```
 
 To rebuild the exact committed library instead of crawling again, run `python3 library/seed.py` in place of

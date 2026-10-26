@@ -57,12 +57,14 @@ export function drawBoard(svg, data, { mini = false } = {}) {
   svg.textContent = "";
   svg.dataset.mini = mini ? "1" : "";
   const byNet = new Map(), byRef = new Map();
-  const outline = data.outline?.length ? data.outline.map((g) => `M${pts(g.pts, ox, oy).replace(/ /g, " L")}`).join(" ") : `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
+  // closed loops fill (even-odd, so cutouts are holes); with none closed, the board's box stands in for the fill
+  const loops = (data.outline || []).filter((g) => g.closed !== false);
+  const outline = loops.length ? loops.map((g) => `M${pts(g.pts, ox, oy).replace(/ /g, " L")} Z`).join(" ") : `M0,0 L${w},0 L${w},${h} L0,${h} Z`;
   const html = [];
   // the mm grid, under everything (hidden at low zoom by .lod-grid)
-  if (!mini) html.push(`<defs><pattern id="pv-g1" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M1 0H0V1" class="g1"/></pattern><pattern id="pv-g10" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" class="g10"/></pattern><clipPath id="pv-clip"><path d="${outline}"/></clipPath></defs>`,
+  if (!mini) html.push(`<defs><pattern id="pv-g1" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M1 0H0V1" class="g1"/></pattern><pattern id="pv-g10" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" class="g10"/></pattern><clipPath id="pv-clip"><path d="${outline}" clip-rule="evenodd"/></clipPath></defs>`,
     `<g class="pv-grid"><rect x="-2000" y="-2000" width="4000" height="4000" fill="url(#pv-g1)" class="grid-1"/><rect x="-2000" y="-2000" width="4000" height="4000" fill="url(#pv-g10)" class="grid-10"/></g>`);
-  else html.push(`<defs><clipPath id="pv-clip-mini"><path d="${outline}"/></clipPath></defs>`);
+  else html.push(`<defs><clipPath id="pv-clip-mini"><path d="${outline}" clip-rule="evenodd"/></clipPath></defs>`);
   // the board: the mask over FR4, a darker lip inside the edge so it reads as a slab; a mirrored group holds every
   // layer so flipping is one transform about the board's centre
   const clip = mini ? "url(#pv-clip-mini)" : "url(#pv-clip)";
