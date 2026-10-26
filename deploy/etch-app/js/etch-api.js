@@ -126,3 +126,30 @@ export function tts(text) {
   return backend("/etch/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: String(text).slice(0, 400) }) })
     .then((r) => (r.ok ? r.blob() : null)).catch(() => null);
 }
+
+// ---- the 2D views, the numbers and the questions (API.md "2D views, numbers and questions") ----
+// view("pcb2d" | "schematic" | "stats", run): the build's flat board, its schematic or its numbers. A board the engine
+// did not build (gh:, a local file) has none: the call throws an error with status 404, which the page shows as its
+// empty state. With ?mock=1 or no backend, the demo build's data (fixtures/views/*.json) stands in for any board.
+export async function view(kind, run) {
+  await init();
+  if (status.mock || !API) return fetch(`fixtures/views/${kind}.json`).then((r) => { if (!r.ok) throw Object.assign(new Error("not found"), { status: 404 }); return r.json(); });
+  const r = await backend(`/etch/${kind}?id=${encodeURIComponent(run)}`);
+  return parse(r);
+}
+// clarify(text, level): the questions Etch asks before a design build, with its recommended answer marked
+export async function clarify(text, level = "hobbyist") {
+  await init();
+  if (status.mock || !API) return fetch("fixtures/views/clarify.json").then((r) => r.json());
+  const r = await backend("/etch/clarify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, level }) });
+  return parse(r);
+}
+// exportCheck(run): GET /etch/export runs ERC and DRC again on the files that go in the fab zip, no download
+export async function exportCheck(run) {
+  await init();
+  if (status.mock || !API) return { ok: true, cached: true, files: 12, bytes: 0, checks: { erc_errors: 0, drc_violations: 0, unconnected: 0, parity: 0 } };
+  const r = await backend(`/etch/export?id=${encodeURIComponent(run)}`);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok && r.status !== 409) { const e = new Error(j.error || `error ${r.status}`); e.status = r.status; throw e; }
+  return j; // {ok: false, reasons} on a failed check
+}

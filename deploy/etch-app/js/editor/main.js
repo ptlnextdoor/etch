@@ -27,6 +27,8 @@ import * as mine from "../my-boards.js";
 import { saveJob, readJob, clearJob, mountJobPill, jobHref, jobBoardId, DEMO } from "../ui/job-pill.js";
 import { createRenderLoader } from "./render-loader.js";
 import { bindLiquid, liquidTabs, wobble } from "../ui/goo.js";
+import { createPlanView } from "./plan-view.js";
+import { createSchView } from "./sch-view.js";
 
 registerSW();
 // the API client, with `authed` for the backend call (named `backend` since the access code went away)
@@ -66,9 +68,12 @@ if (NEW) { $("crTitle").textContent = "New board"; document.title = "New board Â
 $("homeL").href = page("index") + carry();
 $("exL").href = page("explore") + carry();
 for (const [id, name] of [["copyB", "copy"], ["pasteB", "paste"], ["dupB", "dup"], ["delB", "del"], ["undoB", "undo"], ["redoB", "redo"], ["showAllB", "showAll"], ["panelT", "panel"], ["rpChev", "chev"]]) $(id).innerHTML = ic(name);
+const announce = (t) => { const l = $("viewLive"); if (l) { l.textContent = ""; setTimeout(() => { l.textContent = t; }, 30); } };
 for (const b of document.querySelectorAll(".top .btn, .tools .ib, .seg button, .pill-btn")) b.classList.add("lq-btn");
 
 const viewer = createBoardViewer($("cw"));
+// a hover from the This board list reaches the flat views too
+{ const setHover0 = viewer.setHover; viewer.setHover = (ref, o) => { setHover0(ref, o); plan?.hover(ref); sch?.hover(ref); }; }
 // "Rendering your board" over the stage from the moment a build is done (or the page opens a board) until its model is in the scene
 const rl = createRenderLoader($("stage"), { onCancel: () => cancelBuild() });
 const overlay = createSelectionOverlay($("selOv"), viewer);
@@ -95,7 +100,8 @@ $("redoB").onclick = () => stepHistory(redo, undo, false);
 // ---------- selection ----------
 const locked = new Set();
 function setSel(refs, { focus = false } = {}) {
-  sel = [...new Set(refs || [])].filter((r) => board.parts[r] || viewer.parts[r]);
+  // a part is one the board knows, in 3D or in a flat view (the demo views carry their own parts)
+  sel = [...new Set(refs || [])].filter((r) => board.parts[r] || viewer.parts[r] || plan?.data?.parts?.some((p) => p.ref === r) || sch?.data?.symbols?.some((p) => p.ref === r));
   viewer.select(sel);
   overlay.set(sel);
   inspector.set(sel);
@@ -103,6 +109,7 @@ function setSel(refs, { focus = false } = {}) {
   syncTools();
   if (focus && sel.length === 1) viewer.focus(sel[0]);
   if (sel.length === 1) list?.reveal(sel[0]);
+  plan?.select(sel); sch?.select(sel);
 }
 // the mascot reacts to what happens on the board (dock.emote lands with the dock; until then this does nothing)
 const emote = (k) => { try { dock?.emote?.(k); } catch (e) { /* the dock's own business */ } };
@@ -121,20 +128,24 @@ const actions = {
   hide(refs, on) {
     const before = refs.map((r) => viewer.hidden.has(r));
     record(`${on ? "hide" : "show"} ${refs.join(", ")}`, () => refs.forEach((r) => viewer.setHidden(r, on)), () => refs.forEach((r, i) => viewer.setHidden(r, before[i])));
-    list?.sync(); inspector.render(); syncTools();
+    list?.sync(); inspector.render(); syncTools(); syncDim();
     emote("nod");
   },
   isolate(refs) {
     const before = viewer.isolated;
     record(refs ? `isolate ${refs.join(", ")}` : "show all", () => viewer.isolate(refs), () => viewer.isolate(before));
-    inspector.render(); syncTools();
+    inspector.render(); syncTools(); syncDim();
     if (refs) viewer.fitView(refs);
     emote("nod");
   },
+  // a net lit in a flat view: the same net everywhere, its parts marked in 3D, the net card in the inspector
+  net: (name) => setNet(name, name ? plan?.netInfo(name) || sch?.netInfo(name) : null),
+  showView: (v) => setView(v),
   clear: () => setSel([]),
   select: (refs) => setSel(refs, { focus: true }),
   pick,
   changeBlock,
+  askText(text) { dock?.expand(true, { force: true }); bridge?.ask(text, {}); },
   ask(refs) {
     dock?.expand(true, { force: true });
     if (refs.length === 1) bridge?.ask(`What does ${refs[0]} do on this board?`, { ref: refs[0] });
@@ -154,7 +165,7 @@ const actions = {
   liquid: (el) => bindLiquid(el),
 };
 const inspector = createInspector($("insp"), { board, viewer, api, actions });
-let list = null, dock = null, bridge = null;
+let list = null, dock = null, bridge = null, makeSheet = null;
 
 // a board whose licence doesn't allow copies can't be changed (the backend's own 403 wording)
 function changeBlock() {
@@ -174,8 +185,13 @@ $("delB").onclick = () => { if (!sel.length || blocked()) return; bridge?.change
 $("showAllB").onclick = () => {
   const hid = [...viewer.hidden], iso = viewer.isolated;
   record("show all parts", () => { for (const r of hid) viewer.setHidden(r, false); viewer.isolate(null); }, () => { for (const r of hid) viewer.setHidden(r, true); viewer.isolate(iso); });
-  list?.sync(); inspector.render(); syncTools();
+  list?.sync(); inspector.render(); syncTools(); syncDim();
 };
+// parts hidden or isolated away in 3D are drawn faint in the flat views
+function syncDim() {
+  const iso = viewer.isolated ? new Set(viewer.isolated) : null;
+  plan?.setDim(Object.keys(board.parts).filter((r) => viewer.hidden.has(r) || (iso && !iso.has(r))));
+}
 
 // ---------- view tools + camera ----------
 let cube = null, camBtns = null;
@@ -189,29 +205,92 @@ function setOrtho(on) {
   mountCube();
   segSync();
 }
+const flat = () => (viewMode === "plan" ? plan : viewMode === "sch" ? sch : null);
 camBtns = createCameraButtons($("camHost"), {
-  home: () => { viewer.reset(); segSync("3d"); },
-  fit: () => viewer.fitView(sel.length ? sel : null),
-  zoomIn: () => viewer.zoomBy(1.35),
-  zoomOut: () => viewer.zoomBy(1 / 1.35),
+  home: () => { if (flat()) return flat().fit(); viewer.reset(); segSync("3d"); },
+  fit: () => (flat() ? flat().fit() : viewer.fitView(sel.length ? sel : null)),
+  zoomIn: () => (flat() ? flat().zoom(1.35) : viewer.zoomBy(1.35)),
+  zoomOut: () => (flat() ? flat().zoom(1 / 1.35) : viewer.zoomBy(1 / 1.35)),
   toggleOrtho: (next) => setOrtho(typeof next === "boolean" ? next : !viewer.ortho),
 });
 mountCube();
 viewer.on("frame", () => cube?.update());
-let viewMode = "3d";
-function segSync(mode) {
-  if (mode) viewMode = mode;
-  for (const b of $("viewSeg").children) {
-    const on = b.dataset.v === "ortho" ? viewer.ortho : b.dataset.v === viewMode;
-    b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+
+// ---------- the flat views: the board as KiCad plots it (plan-view.js) and its schematic (sch-view.js) ----------
+// Both are drawn from the engine's own files (GET /etch/pcb2d, /etch/schematic), so they show on boards Etch built
+// (and on the demo board with ?mock=1); a library board gets their empty state.
+let viewMode = "3d", net = null;
+const showTag = (html) => {
+  const t = $("htag"), r = $("stage").getBoundingClientRect();
+  if (!html) { t.classList.remove("show"); return; }
+  t.innerHTML = html;
+  t.style.transform = `translate(${mouse.x - r.left + 14}px, ${mouse.y - r.top + 14}px)`;
+  t.classList.add("show");
+};
+const flatOpts = {
+  api, board, viewer, tag: showTag, announce,
+  onPick: (ref, { shift } = {}) => pick(ref, { add: !!shift }),
+  onHover: (ref) => viewer.setHover(ref || null, { silent: true }),
+  onNet: (name, info) => setNet(name, info),
+  onBack: () => setView("3d"),
+};
+const plan = createPlanView($("stage"), flatOpts);
+const sch = createSchView($("stage"), flatOpts);
+function setNet(name, info) {
+  net = name || null;
+  plan.setNet(net); sch.setNet(net);
+  const p = net ? plan.netInfo(net) : null, q = net ? sch.netInfo(net) : null;
+  const parts = info?.parts?.length ? info.parts : p?.parts || q?.parts || [];
+  viewer.mark(parts);
+  inspector.setNet(net ? { name: net, pads: p?.pads, vias: p?.vias, track_mm: p?.track_mm, pins: q?.pins, labels: q?.labels, parts } : null);
+  if (net && viewMode === "sch") sch.fitNet(net);
+}
+const canFlat = () => board.kind !== "new" && !board.local && (board.live || api.status.mock || !api.hasBackend());
+function setView(mode, { fromUrl = false } = {}) {
+  if (mode !== "3d" && !canFlat()) {
+    toast(board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first.") : "A board opened from a file has no flat view.");
+    segSync("3d"); return;
+  }
+  const was = viewMode; viewMode = mode;
+  document.body.classList.remove("v-3d", "v-plan", "v-sch"); document.body.classList.add("v-" + mode);
+  if (mode !== "plan") plan.hide(); if (mode !== "sch") sch.hide();
+  if (mode === "plan") { if (was === "3d") viewer.view("top"); plan.show(board.id); }
+  else if (mode === "sch") sch.show(board.id);
+  else viewer.invalidate();
+  segSync(mode);
+  if (!fromUrl) { const u = new URL(location.href); if (mode === "3d") u.searchParams.delete("view"); else u.searchParams.set("view", mode); history.replaceState(null, "", u); }
+}
+const viewTabs = liquidTabs($("viewSeg"), { value: "3d", onChange: (v) => setView(v) });
+function segSync(mode) { if (mode) viewTabs.set(mode); }
+// the 2D and Schematic segments wait for a board Etch built
+function paintViewSeg() {
+  for (const b of $("viewSeg").querySelectorAll("[data-value]")) {
+    const off = b.dataset.value !== "3d" && !canFlat();
+    b.setAttribute("aria-disabled", off ? "true" : "false");
+    if (!b.dataset.title) b.dataset.title = b.title;
+    b.title = off ? (board.kind === "new" ? (board.building ? "Etch is still building this board." : "Describe your board first") : "Shows on boards Etch builds") : b.dataset.title;
   }
 }
-for (const b of $("viewSeg").children) b.onclick = () => {
-  if (b.dataset.v === "ortho") return setOrtho(!viewer.ortho);
-  if (b.dataset.v === "top") viewer.view("top"); else viewer.reset();
-  segSync(b.dataset.v);
-};
 $("cw").addEventListener("dblclick", () => { viewer.reset(); segSync("3d"); });
+// Top Â· Bottom and Layers (2D only)
+for (const b of $("sideSeg").children) b.onclick = () => flipTo(b.dataset.v);
+function flipTo(side) {
+  plan.flip(side);
+  for (const b of $("sideSeg").children) { const on = b.dataset.v === plan.side; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }
+}
+const LAYERS = [["fcu", "Front copper", "#33905a"], ["bcu", "Back copper", "#2d8352"], ["zones", "Copper pours", "#24734a"], ["pads", "Pads", "#dfb85e"], ["vias", "Vias", "#c9a650"], ["silk", "Silkscreen", "#f5f5f1"], ["lines", "Part outlines", "#c9d0d7"], ["labels", "Labels", "#f5f5f1"]];
+function renderLayers() {
+  const el = $("layersPop"); el.textContent = "";
+  el.append(h("h3", {}, "Layers"));
+  const ls = plan.layers;
+  for (const [k, label, c] of LAYERS) {
+    const on = !!ls[k];
+    el.append(h("div", { class: "ly-row" }, h("i", { class: "ly-sw", style: `--c:${c}` }), h("span", { class: "ly-l" }, label),
+      h("button", { type: "button", class: "ib xs lq-btn", "aria-pressed": on ? "true" : "false", "aria-label": `${label}: ${on ? "shown" : "hidden"}`, title: on ? "Hide" : "Show", html: ic(on ? "eye" : "eyeOff", 15), onclick: () => { plan.layer(k, !on); renderLayers(); } })));
+  }
+  el.append(h("button", { type: "button", class: "btn ly-all lq-btn", onclick: () => { for (const [k] of LAYERS) plan.layer(k, k !== "lines" && k !== "bcu"); renderLayers(); } }, "Show all layers"));
+  bindLiquid(el);
+}
 
 // ---------- right panel: chevron collapse, liquid tabs, bottom sheet on phones ----------
 function setPanel(open) {
@@ -239,7 +318,8 @@ function pop(btn, el) {
 }
 function closePops() { for (const p of document.querySelectorAll(".pop.show")) p.classList.remove("show"); }
 addEventListener("click", closePops);
-pop($("setB"), $("setPop")); pop($("importB"), $("importPop")); pop($("exportB"), $("exportPop"));
+pop($("setB"), $("setPop")); pop($("importB"), $("importPop")); pop($("layersB"), $("layersPop"));
+renderLayers();
 const swatchHex = (n) => "#" + n.toString(16).padStart(6, "0");
 function renderSettings() {
   const el = $("setPop"); el.textContent = "";
@@ -258,6 +338,8 @@ function renderSettings() {
     group("Silkscreen", SILKS, look.silk, (k) => viewer.setSilk(k)),
     group("Finish", FINISHES, look.finish, (k) => viewer.setFinish(k), (k) => (k === "HASL" ? "HASL (tin)" : "ENIG (gold)")),
     h("label", { class: "toggle" }, h("input", { type: "checkbox", checked: viewer.floor || null, onchange: (e) => viewer.setFloor(e.target.checked) }), "Workplane grid"));
+  // the 2D board follows the same mask, silk and finish
+  plan.setLook({ mask: { name: look.mask, color: MASKS[look.mask] }, silk: look.silk, finish: look.finish });
 }
 
 // ---------- import / export / share ----------
@@ -266,18 +348,9 @@ function renderMenus() {
   im.append(
     h("a", { role: "menuitem", href: page("explore") + carry() }, h("b", {}, "Browse open-source boards"), h("span", {}, "Real KiCad projects from GitHub")),
     h("button", { role: "menuitem", type: "button", onclick: () => $("glbFile").click() }, h("b", {}, "Open a .glb file"), h("span", {}, "View a 3D board from your computer")));
-  const ex = $("exportPop"); ex.textContent = "";
-  const m = board.meta;
-  if (board.files) ex.append(h("a", { role: "menuitem", href: board.files.glb, download: (m.slug || slugOf(ID)) + ".glb" }, h("b", {}, "3D model (.glb)"), h("span", {}, "Board and parts, metres, Y up")));
-  if (board.live) {
-    ex.append(h("button", { role: "menuitem", type: "button", onclick: () => download(`/etch/glb?id=${encodeURIComponent(ID)}`, `${ID}.glb`) }, h("b", {}, "3D model (.glb)"), h("span", {}, "From the Etch engine")));
-    ex.append(h("button", { role: "menuitem", type: "button", onclick: () => download(`/etch/export.zip?id=${encodeURIComponent(ID)}`, `${ID}-fab.zip`) }, h("b", {}, "KiCad project + Gerbers (.zip)"), h("span", {}, "Checked fab files, drill, BOM")));
-  }
-  if (m.url) {
-    const at = m.commit ? `/tree/${m.commit}` : "", dir = m.pcb_path ? "/" + m.pcb_path.split("/").slice(0, -1).join("/") : "";
-    ex.append(h("a", { role: "menuitem", href: m.url + at + (m.commit ? dir : ""), target: "_blank", rel: "noopener" }, h("b", {}, "KiCad project"), h("span", {}, `On GitHub at ${m.commit ? m.commit.slice(0, 7) : "the latest commit"}`)));
-  }
-  if (!ex.children.length) ex.append(h("div", { class: "empty" }, "Nothing to export for this board."));
+  // exports (3D model, fab zip, the KiCad project on GitHub) live in the Make it sheet (make-sheet.js)
+  paintViewSeg();
+  makeSheet?.refresh?.();
 }
 async function download(path, name) {
   try {
@@ -308,11 +381,9 @@ let lastHover = performance.now();
 viewer.on("hover", (ref) => {
   const t = $("htag");
   if (ref) { if (performance.now() - lastHover > 6000) emote("nod"); lastHover = performance.now(); }
-  if (!ref || ghostDrop.active) { t.classList.remove("show"); return; }
-  const p = board.parts[ref] || {}, r = $("stage").getBoundingClientRect();
-  t.innerHTML = `<b>${esc(ref)}</b>${p.value ? ` ${esc(p.value)}` : ""}`;
-  t.style.transform = `translate(${mouse.x - r.left + 14}px, ${mouse.y - r.top + 14}px)`;
-  t.classList.add("show");
+  if (!ref || ghostDrop.active || viewMode !== "3d") { t.classList.remove("show"); return; }
+  const p = board.parts[ref] || {};
+  showTag(`<b>${esc(ref)}</b>${p.value ? ` ${esc(p.value)}` : ""}`);
 });
 
 // ---------- drop a part from the panel onto the board ----------
@@ -400,6 +471,8 @@ const reloadChange = async ({ run } = {}) => {
       board.id = run; board.kind = "live"; board.live = true;
       mine.retitle(run, board.meta?.title);
       history.replaceState(null, "", page("board") + carry({ id: run }));
+      setNet(null, null);
+      if (viewMode !== "3d") { const m = viewMode; viewMode = "3d"; setView(m); }
     } else if (board.files) {
       // demo: the same board again, so the swap in place is visible
       const glb = await cachedFetch(board.files.glb).then((r) => r.arrayBuffer());
@@ -454,6 +527,7 @@ async function loadDesign({ run, done = false } = {}) {
     if (!list) list = createBoardList($("paneBoard"), { board, viewer, actions });
     list.render(); renderSettings(); syncTools(); bindLiquid(document);
     document.body.classList.add("ready");
+    paintViewSeg();
     dock?.nudge?.();
     backdrop?.remove(); backdrop = null;
     arrived();
@@ -661,6 +735,7 @@ async function startNew() {
   board.meta = { title: "New board" };
   renderMenus(); renderSettings(); syncTools();
   document.body.classList.add("ready", "nb-on");
+  paintViewSeg();
   // a few well-known library boards rest at the edges of the empty workplane
   const idx = await cachedFetch(WORLD + "index.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
   const picks = (idx.boards || []).slice().sort((a, b) => (b.stars || 0) - (a.stars || 0)).filter((x, i) => i % 3 === 0).slice(0, 5);
@@ -810,6 +885,8 @@ async function main() {
   bindLiquid(document);
   document.body.classList.add("ready");
   if (Q.get("sel")) setSel(Q.get("sel").split(","), { focus: true });
+  paintViewSeg();
+  if (["plan", "sch"].includes(Q.get("view")) && canFlat()) setView(Q.get("view"), { fromUrl: true });
   if (!board.live) remember(ID);
   if (Q.get("remix") === "1") askChange();
   if (RESUME && RESUME.board === ID) bridge.resume(RESUME);
@@ -881,7 +958,13 @@ const typing = () => { const a = document.activeElement; return a && (a.tagName 
 addEventListener("keydown", (e) => {
   if (typing()) return;
   const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
-  if (k === "escape") { closePops(); setSel([]); }
+  if (k === "escape") { closePops(); if (net) { setNet(null, null); return; } setSel([]); }
+  else if (!mod && ["1", "2", "3"].includes(k)) setView(["3d", "plan", "sch"][+k - 1]);
+  else if (!mod && k === "b" && viewMode === "plan") flipTo(plan.side === "F" ? "B" : "F");
+  else if (!mod && flat() && (k === "+" || k === "=")) flat().zoom(1.35);
+  else if (!mod && flat() && k === "-") flat().zoom(1 / 1.35);
+  else if (!mod && flat() && k === "0") flat().fit();
+  else if (!mod && flat() && k.startsWith("arrow")) { e.preventDefault(); const d = e.shiftKey ? 160 : 40; flat().pan(k === "arrowleft" ? d : k === "arrowright" ? -d : 0, k === "arrowup" ? d : k === "arrowdown" ? -d : 0); }
   else if (mod && k === "z") { e.preventDefault(); e.shiftKey ? stepHistory(redo, undo, false) : stepHistory(undo, redo, true); }
   else if (mod && k === "y") { e.preventDefault(); stepHistory(redo, undo, false); }
   else if (mod && k === "c") $("copyB").click();
@@ -891,8 +974,8 @@ addEventListener("keydown", (e) => {
   else if (!mod && (k === "delete" || k === "backspace") && sel.length) { e.preventDefault(); $("delB").click(); }
   else if (!mod && k === "h" && sel.length) actions.hide(sel, !sel.every((r) => viewer.hidden.has(r)));
   else if (!mod && k === "i" && sel.length) actions.isolate(viewer.isolated ? null : sel);
-  else if (!mod && k === "f") viewer.fitView(sel.length ? sel : null);
+  else if (!mod && k === "f") { if (flat()) flat().fit(); else viewer.fitView(sel.length ? sel : null); }
 });
 
-window.__editor = { board, viewer, api, get dock() { return dock; }, get bridge() { return bridge; }, setSel, get sel() { return sel; } }; // inspection from tests
+window.__editor = { board, viewer, api, get dock() { return dock; }, get bridge() { return bridge; }, setSel, get sel() { return sel; }, setView, get view() { return viewMode; }, plan, sch, get net() { return net; }, setNet }; // inspection from tests
 main();

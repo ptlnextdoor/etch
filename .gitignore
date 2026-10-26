@@ -77,5 +77,6 @@ __pycache__/
 .DS_Store
 
 !/docs/
+!/.github/
 !/Dockerfile
 !/.dockerignore

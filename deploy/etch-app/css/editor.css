@@ -15,6 +15,7 @@ button { cursor: pointer; }
 a { color: var(--accent-ink); }
 .num, .snap, .in-rows dd, .bv-ruler, .so-dim, .g-tag, .bl-count, .n { font-variant-numeric: tabular-nums; }
 [hidden] { display: none !important; }
+.vis-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- top: breadcrumb row + tool row ---------- */
 .top { border-bottom: 1px solid var(--line); background: var(--bg); position: relative; z-index: 30; }
