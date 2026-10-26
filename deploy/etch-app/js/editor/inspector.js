@@ -24,7 +24,7 @@ export function createInspector(el, { board, viewer, api, actions }) {
         const s = firstSentence(r.answer);
         what.set(ref, s); try { localStorage.setItem(key(ref), s); } catch (e) { /* not kept */ }
         if (refs[0] === ref) { line.textContent = s; line.classList.remove("wait"); }
-      } catch (e) { if (refs[0] === ref) { line.textContent = e.message; line.classList.remove("wait"); line.classList.add("err"); } }
+      } catch (e) { if (refs[0] === ref) { line.textContent = e.message; line.classList.remove("wait"); } }
     }, 450);
   }
 
@@ -53,11 +53,12 @@ export function createInspector(el, { board, viewer, api, actions }) {
     for (const r of (n.parts || []).slice(0, 18)) list.append(h("button", { type: "button", class: "chip", onclick: () => actions.select([r]) }, r));
     if ((n.parts || []).length > 18) list.append(h("span", { class: "more" }, `+${n.parts.length - 18}`));
     if (list.children.length) el.append(list);
+    const inSch = document.body.classList.contains("v-sch");
     el.append(h("div", { class: "in-acts" },
-      act("schem", "Schematic", () => actions.showView?.("sch")),
-      act("board2d", "2D", () => actions.showView?.("plan")),
+      inSch ? act("board2d", "2D", () => actions.showView?.("plan")) : act("schem", "Schematic", () => actions.showView?.("sch")),
       act("ask", "Ask", () => { actions.askText?.(`What is the ${n.name} net for on this board?`); }),
       act("close", "Clear", () => actions.net?.(null))));
+    el.querySelector(".in-acts").style.gridTemplateColumns = "repeat(3, 1fr)";
     actions.liquid?.(el);
   }
   function render() {

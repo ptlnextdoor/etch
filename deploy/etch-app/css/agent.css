@@ -246,7 +246,7 @@
 .ag-rec.settled .ag-rec-t { font: 500 13px/1.3 var(--ag-sans); color: var(--ag-muted); }
 .ag-rec.settled .ag-card-sum { margin-top: 3px; }
 .ag-card.settled { opacity: .78; }
-.ag-card.settled .ag-card-acts, .ag-card.settled .ag-opts { display: none; }
+.ag-card.settled .ag-card-acts, .ag-card.settled .ag-opts, .ag-card.settled .ag-card-d { display: none; }
 .ag-card-sum { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ag-muted); }
 .ag-opts { display: flex; flex-direction: column; gap: 6px; }
 .ag-opt {

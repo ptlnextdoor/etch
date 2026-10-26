@@ -123,7 +123,7 @@ export function createSchView(stage, { api, board, onPick, onHover, onNet, tag, 
   stage.append(root);
   const pz = createPanZoom(svg, { onChange: lod, onInput: () => svg.classList.remove("draw") });
   let data = null, geo = null, run = null, sel = new Set(), hov = null, net = null, gen = 0, loader = null;
-  const padFor = () => (matchMedia("(max-width: 768px)").matches ? { l: 16, t: 16, r: 16, b: 84 } : { l: 64, t: 32, r: 32, b: 96 });
+  const padFor = () => (matchMedia("(max-width: 768px)").matches ? { l: 16, t: 24, r: 16, b: 84 } : { l: 72, t: 48, r: 80, b: 104 });
   function lod(k) {
     svg.classList.toggle("lod-pins", k * 1.27 < 7);
     svg.classList.toggle("lod-text", k * 1.27 < 5);

@@ -142,7 +142,7 @@ const actions = {
   },
   // a net lit in a flat view: the same net everywhere, its parts marked in 3D, the net card in the inspector
   net: (name) => setNet(name, name ? plan?.netInfo(name) || sch?.netInfo(name) : null),
-  showView: (v) => setView(v),
+  showView: (v) => { setView(v); if (net && v === "sch") setTimeout(() => sch.fitNet(net), 60); },
   clear: () => setSel([]),
   select: (refs) => setSel(refs, { focus: true }),
   pick,
@@ -226,7 +226,8 @@ const showTag = (html) => {
   const t = $("htag"), r = $("stage").getBoundingClientRect();
   if (!html) { t.classList.remove("show"); return; }
   t.innerHTML = html;
-  t.style.transform = `translate(${mouse.x - r.left + 14}px, ${mouse.y - r.top + 14}px)`;
+  const x = Math.min(mouse.x - r.left + 14, r.width - t.offsetWidth - 8), near = mouse.y - r.top + 14 + t.offsetHeight > r.height - 8;
+  t.style.transform = `translate(${Math.max(0, x)}px, ${mouse.y - r.top + (near ? -14 - t.offsetHeight : 14)}px)`;
   t.classList.add("show");
 };
 const flatOpts = {
@@ -235,6 +236,11 @@ const flatOpts = {
   onHover: (ref) => viewer.setHover(ref || null, { silent: true }),
   onNet: (name, info) => setNet(name, info),
   onBack: () => setView("3d"),
+  onData: (d) => {
+    let added = false;
+    for (const p of d.parts || []) if (p.part && !board.parts[p.ref]) { board.parts[p.ref] = { ref: p.ref, value: p.value, footprint: p.footprint, side: p.side === "B" ? "bottom" : "top", rot: p.rot, pos_mm: p.at }; added = true; }
+    if (added) { api.setBoard(board.id, board.parts, board.meta); list?.render(); }
+  },
 };
 const plan = createPlanView($("stage"), flatOpts);
 const sch = createSchView($("stage"), flatOpts);
@@ -243,7 +249,7 @@ makeSheet = createMakeSheet($("stage"), {
   api, board, viewer, download, toast,
   change: (t) => { if (blockedDrop()) return; dock?.expand(true, { force: true }); bridge?.change(t, {}); },
   // the small board on the sheet: the 2D renderer, mask, copper and pads only
-  mini: (host, d) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "pv l-fcu l-zones l-pads"); s.dataset.side = "F"; s.setAttribute("viewBox", `-1.5 -1.5 ${d.w + 3} ${d.h + 3}`); host.append(s); drawBoard(s, d, { mini: true }); },
+  mini: (host, d) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "pv l-fcu l-zones l-pads"); s.dataset.side = "F"; s.dataset.finish = viewer.look.finish; s.dataset.mask = viewer.look.mask; s.setAttribute("viewBox", `-1.5 -1.5 ${d.w + 3} ${d.h + 3}`); host.append(s); drawBoard(s, d, { mini: true }); },
   glbHref: () => board.files?.glb || null,
 }).bind($("makeB"));
 function setNet(name, info) {
@@ -253,7 +259,6 @@ function setNet(name, info) {
   const parts = info?.parts?.length ? info.parts : p?.parts || q?.parts || [];
   viewer.mark(parts);
   inspector.setNet(net ? { name: net, pads: p?.pads, vias: p?.vias, track_mm: p?.track_mm, pins: q?.pins, labels: q?.labels, parts } : null);
-  if (net && viewMode === "sch") sch.fitNet(net);
 }
 const canFlat = () => board.kind !== "new" && !board.local && (board.live || api.status.mock || !api.hasBackend());
 function setView(mode, { fromUrl = false } = {}) {
@@ -288,17 +293,18 @@ function flipTo(side) {
   plan.flip(side);
   for (const b of $("sideSeg").children) { const on = b.dataset.v === plan.side; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); }
 }
-const LAYERS = [["fcu", "Front copper", "#33905a"], ["bcu", "Back copper", "#2d8352"], ["zones", "Copper pours", "#24734a"], ["pads", "Pads", "#dfb85e"], ["vias", "Vias", "#c9a650"], ["silk", "Silkscreen", "#f5f5f1"], ["lines", "Part outlines", "#c9d0d7"], ["labels", "Labels", "#f5f5f1"]];
+const LAYERS = [["fcu", "Front copper", "--pcb-track"], ["bcu", "Back copper", "--pcb-track"], ["zones", "Copper pours", "--pcb-zone"], ["pads", "Pads", "--pcb-pad"], ["vias", "Vias", "--pcb-via"], ["silk", "Silkscreen", "--pcb-silk"], ["lines", "Part outlines", "#c9d0d7"], ["labels", "Labels", "--pcb-silk"]];
+$("layersB").innerHTML = ic("layers", 16) + " Layers";
 function renderLayers() {
   const el = $("layersPop"); el.textContent = "";
   el.append(h("h3", {}, "Layers"));
-  const ls = plan.layers;
-  for (const [k, label, c] of LAYERS) {
-    const on = !!ls[k];
+  const ls = plan.layers, cs = getComputedStyle(plan.svg);
+  for (const [k, label, v] of LAYERS) {
+    const on = !!ls[k], c = v.startsWith("--") ? cs.getPropertyValue(v).trim() || "#ccc" : v;
     el.append(h("div", { class: "ly-row" }, h("i", { class: "ly-sw", style: `--c:${c}` }), h("span", { class: "ly-l" }, label),
       h("button", { type: "button", class: "ib xs lq-btn", "aria-pressed": on ? "true" : "false", "aria-label": `${label}: ${on ? "shown" : "hidden"}`, title: on ? "Hide" : "Show", html: ic(on ? "eye" : "eyeOff", 15), onclick: () => { plan.layer(k, !on); renderLayers(); } })));
   }
-  el.append(h("button", { type: "button", class: "btn ly-all lq-btn", onclick: () => { for (const [k] of LAYERS) plan.layer(k, k !== "lines" && k !== "bcu"); renderLayers(); } }, "Show all layers"));
+  el.append(h("button", { type: "button", class: "btn ly-all lq-btn", onclick: () => { for (const [k] of LAYERS) plan.layer(k, k !== "lines" && k !== "bcu"); renderLayers(); } }, "Reset layers"));
   bindLiquid(el);
 }
 

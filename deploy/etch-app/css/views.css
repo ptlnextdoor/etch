@@ -5,7 +5,8 @@
 /* ---------- which view is up: the body class drives the chrome ---------- */
 body.v-plan .cw, body.v-sch .cw, body.v-plan .sel-ov, body.v-sch .sel-ov, body.v-plan .bv-labels, body.v-sch .bv-labels { opacity: 0 !important; pointer-events: none; }
 body.v-plan #cubeHost, body.v-sch #cubeHost, body.v-plan .cam-host [data-k="ortho"], body.v-sch .cam-host [data-k="ortho"] { display: none; }
-body.v-plan .snap, body.v-sch .snap, body.v-sch .br { display: none; }
+body.v-plan .snap, body.v-sch .snap { display: none; }
+body.v-sch .br { visibility: hidden; pointer-events: none; }
 body:not(.v-plan) .br .pv-only { display: none; }
 .pv-host, .schv-host { position: absolute; inset: 0; z-index: 8; animation: fv-in .22s var(--ease) both; }
 @keyframes fv-in { from { opacity: 0; } }
@@ -47,7 +48,8 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .pv.lod-grid .grid-1 { display: none; }
 .pv[data-mini="1"] .pv-grid { display: none; }
 /* the board slab */
-.pv .board { fill: var(--pcb-mask); stroke: var(--pcb-mask-lip); stroke-width: 1.4; paint-order: stroke; filter: drop-shadow(0 6px 11px var(--pcb-shadow)); transition: fill .3s; }
+.pv .board { fill: var(--pcb-mask); stroke: none; filter: drop-shadow(0 6px 11px var(--pcb-shadow)); transition: fill .3s; }
+.pv .lip { fill: none; stroke: var(--pcb-mask-lip); stroke-width: 1.4; pointer-events: none; }
 .pv.moving .board, .pv[data-mini="1"] .board { filter: none; }
 .pv .edge { fill: none; stroke: var(--pcb-edge); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }
 /* copper through the mask; only the side you face by default, the far side when its layer is on */
@@ -81,7 +83,7 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .pv[data-side="F"] .line.silk.s-B, .pv[data-side="F"] .ref.s-B, .pv[data-side="F"] .silk-t.s-B,
 .pv[data-side="B"] .line.silk.s-F, .pv[data-side="B"] .ref.s-F, .pv[data-side="B"] .silk-t.s-F { display: none; }
 /* a footprint on the far side is drawn faint, so it reads as "through the board" */
-.pv[data-side="F"] .fp.s-B .court, .pv[data-side="B"] .fp.s-F .court { stroke: rgba(255, 255, 255, .22); stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 3 3; }
+.pv.l-lines[data-side="F"] .fp.s-B .court, .pv.l-lines[data-side="B"] .fp.s-F .court { stroke: rgba(255, 255, 255, .14); stroke-width: 1; vector-effect: non-scaling-stroke; }
 /* hit testing: pads first (DOM order), then the footprint's box */
 .pv .hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
 .pv .fp.not-part .hit { cursor: default; }
@@ -113,8 +115,7 @@ body:not(.v-plan) .br .pv-only { display: none; }
 
 /* ---------- 2D chrome: dimensions, scale bar, side note ---------- */
 .pv-ui { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-.pv-dim { position: absolute; left: 0; top: 0; font: 600 11px var(--ui); color: #0b5c8f; white-space: nowrap; padding: 1px 5px; border-radius: 5px; background: rgba(244, 246, 248, .85); transform-origin: 100% 50%; transition: opacity .2s; }
-.pv-dim::before { content: ""; position: absolute; left: -3px; right: -3px; top: 50%; height: 1px; background: rgba(61, 127, 174, .5); z-index: -1; }
+.pv-dim { position: absolute; left: 0; top: 0; font: 600 11px var(--ui); color: #0b5c8f; white-space: nowrap; text-shadow: 0 0 2px #f4f6f8, 0 0 4px #f4f6f8; transform-origin: 100% 50%; transition: opacity .2s; }
 .pv.lod-dim ~ .pv-ui .pv-dim { opacity: 0; }
 .pv-side { position: absolute; left: 0; top: 0; font: 600 11px var(--ui); color: #3d7fae; white-space: nowrap; }
 .pv-scale { position: absolute; left: 14px; bottom: 40px; display: flex; flex-direction: column; gap: 3px; }
@@ -129,7 +130,10 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .ly-row { display: flex; align-items: center; gap: 10px; height: 30px; }
 .ly-sw { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--line2); flex: none; }
 .ly-l { flex: 1; font: 600 12.5px var(--ui); color: var(--ink2); }
+.ly-row .ib.xs[aria-pressed="true"] { background: none; color: var(--ink2); }
 .ly-row .ib.xs[aria-pressed="false"] { color: var(--ink3); opacity: .55; }
+.ly-row:has([aria-pressed="false"]) .ly-l { color: var(--ink3); }
+.pill-btn .ic { margin-right: -2px; }
 .pop.layers .ly-all { width: 100%; margin-top: 8px; height: 30px; border-color: transparent; color: var(--ink2); font-size: 12.5px; }
 
 /* ---------- loading, empty and error ---------- */
@@ -169,6 +173,8 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .schv .sym-t.value { fill: var(--ink2); font-weight: 500; }
 .schv.lod-text .sym-t.value, .schv.lod-text .lbl-t, .schv.lod-text .sv-sub { display: none; }
 .schv .sym .hit { fill: transparent; pointer-events: all; cursor: pointer; }
+.schv .sym:focus { outline: none; }
+.schv .sym:focus-visible .hit { stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; }
 .schv .sym.power .hit { cursor: default; }
 .schv .sym.hov .body { fill: var(--sch-hover-fill); stroke: var(--sch-hover-stroke); }
 .schv .sym.power.hov .body { fill: none; stroke: var(--sch-ink); }

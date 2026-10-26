@@ -15,7 +15,7 @@
 .mk-x { flex: none; margin-top: -6px; }
 
 /* body: scrolls; sections 18px apart, titled like the start screen's (.nb-sl) */
-.mk-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
+.mk-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
 .mk-sec { min-width: 0; flex: none; }
 .mk .nb-sl { margin: 0 0 10px; }
 
@@ -85,7 +85,7 @@
 
 /* while it is open the inspector and the bottom-right controls step aside, and the dock centres on what is left */
 .insp { transition: opacity .2s ease; }
-body.mk-on .insp, body.mk-on .br { opacity: 0; pointer-events: none; }
+body.mk-on .insp, body.mk-on .br, body.mk-on .credits, body.mk-on .sh-fab, body.mk-on .bp-fab { opacity: 0; pointer-events: none; transition: opacity .2s; }
 @media (min-width: 769px) {
   body.ed.mk-on .ag-dock { left: max(242px, calc((100% - var(--panel) - 398px) / 2)); }
   body.ed.rp-closed.mk-on .ag-dock { left: max(242px, calc((100% - 398px) / 2)); }
@@ -97,7 +97,7 @@ body.mk-on .insp, body.mk-on .br { opacity: 0; pointer-events: none; }
   .mk-head { padding: 2px 10px 6px 18px; }
   .mk-body { padding: 4px 18px 14px; }
   .mk-foot { padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-radius: 0; }
-  .mk-nums { grid-template-columns: auto 1fr; }
+  .mk-nums { gap: 6px 10px; }
   body.ed .ag-dock { transition: left .42s var(--bounce), opacity .2s ease; }
   body.mk-on .ag-dock { opacity: 0; pointer-events: none; }
 }

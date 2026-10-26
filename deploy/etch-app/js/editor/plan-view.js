@@ -65,8 +65,8 @@ export function drawBoard(svg, data, { mini = false } = {}) {
   else html.push(`<defs><clipPath id="pv-clip-mini"><path d="${outline}"/></clipPath></defs>`);
   // the board: the mask over FR4, a darker lip inside the edge so it reads as a slab; a mirrored group holds every
   // layer so flipping is one transform about the board's centre
-  html.push(`<g class="pv-flip"><path class="board" d="${outline}"/>`);
   const clip = mini ? "url(#pv-clip-mini)" : "url(#pv-clip)";
+  html.push(`<g class="pv-flip"><path class="board" d="${outline}"/><path class="lip" d="${outline}" clip-path="${clip}"/>`);
   html.push(`<g class="pv-layers" clip-path="${clip}">`);
   // copper pours per side
   for (const side of ["B", "F"]) {
@@ -121,7 +121,7 @@ export function drawBoard(svg, data, { mini = false } = {}) {
   return { w, h, byNet, byRef };
 }
 
-export function createPlanView(stage, { api, board, viewer, onPick, onHover, onNet, tag, onBack, announce } = {}) {
+export function createPlanView(stage, { api, board, viewer, onPick, onHover, onNet, onData, tag, onBack, announce } = {}) {
   const root = el("div", "pv-host", { hidden: true });
   const svg = sv("svg", { class: "pv", role: "img", "data-side": "F", "data-mask": "green", "data-silk": "white", "data-finish": "ENIG" });
   const ui = el("div", "pv-ui", { "aria-hidden": "true" });
@@ -136,7 +136,7 @@ export function createPlanView(stage, { api, board, viewer, onPick, onHover, onN
   const layers = { fcu: true, bcu: false, zones: true, pads: true, vias: true, silk: true, lines: false, labels: true };
   const flipS = spring(1, { preset: "smooth", precision: 0.002, onUpdate: (v) => paintFlip(v) });
 
-  const padFor = () => (matchMedia("(max-width: 768px)").matches ? { l: 16, t: 16, r: 16, b: 84 } : { l: 64, t: 32, r: 32, b: 96 });
+  const padFor = () => (matchMedia("(max-width: 768px)").matches ? { l: 16, t: 24, r: 16, b: 84 } : { l: 72, t: 48, r: 80, b: 104 });
   function paintFlip(sx) {
     const g = svg.querySelector(".pv-flip"); if (!g || !geo) return;
     g.setAttribute("transform", `translate(${geo.w / 2} 0) scale(${sx} 1) translate(${-geo.w / 2} 0)`);
@@ -197,6 +197,7 @@ export function createPlanView(stage, { api, board, viewer, onPick, onHover, onN
       if (g !== gen) return null;
       loading(false); msg.hidden = true;
       data = d; geo = drawBoard(svg, d);
+      onData?.(d);
       ui.hidden = false;
       svg.setAttribute("aria-label", `Flat view of ${board?.title || board?.meta?.title || "the board"}, ${fmt(geo.w)} by ${fmt(geo.h)} mm, ${side === "F" ? "top" : "bottom"} side`);
       paintLayers(); flipS.jump(side === "F" ? 1 : -1);
