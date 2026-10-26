@@ -175,7 +175,8 @@ class Schematic(Fixture):
         self.assertEqual(s["nets"]["LED_A"], ["R1", "D1"])
         self.assertEqual(s["nets"]["GND"], ["U1", "D1", "J1"])
         self.assertEqual(len(s["labels"]), 9)
-        self.assertEqual(s["wires"], [[101.6, 59.69, 101.6, 67.31]])
+        self.assertEqual(s["wires"], [{"net": "LED_A", "pts": [101.6, 59.69, 101.6, 67.31]}])
+        self.assertEqual({lb["text"] for lb in s["labels"]}, {lb["net"] for lb in s["labels"]})
         self.assertEqual(s["junctions"], [[101.6, 63.5]])
         self.assertEqual(len(s["no_connects"]), 2)
 

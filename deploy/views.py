@@ -827,6 +827,12 @@ def parse_sch(text: str, pad_nets: dict[tuple[str, str], str] | None = None) -> 
     for k, pp in pin_points:
         if not pp["net"]:
             pp["net"] = net_of_point.get(find(k), "")
+        elif net_of_point.get(find(k)) is None:
+            net_of_point[find(k)] = pp["net"]  # a board net names the sheet points it touches
+    # every wire and label carries its net too, so the page can light a net from either
+    wires = [{"net": net_of_point.get(find(key(w[0], w[1])), ""), "pts": w} for w in wires]
+    for lb in labels:
+        lb["net"] = net_of_point.get(find(key(lb["at"][0], lb["at"][1])), lb["text"])
     nets: dict[str, list[str]] = {}
     for s in symbols:
         for p in s["pins"]:
@@ -850,8 +856,8 @@ def parse_sch(text: str, pad_nets: dict[tuple[str, str], str] | None = None) -> 
         xs += [lb["at"][0], lb["at"][0] + dx]
         ys += [lb["at"][1] - 1.6, lb["at"][1] + dy + 1.6]
     for w in wires:
-        xs += w[0::2]
-        ys += w[1::2]
+        xs += w["pts"][0::2]
+        ys += w["pts"][1::2]
     m = 6.0
     box = [_r(min(xs) - m), _r(min(ys) - m), _r(max(xs) + m), _r(max(ys) + m)] if xs else [0, 0, size[0], size[1]]
     return {
