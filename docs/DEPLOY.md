@@ -61,3 +61,19 @@ container; mount a volume there to keep builds across restarts.
 
 - Speech-to-text (Parakeet via node, `studio/stt/`). Voice input falls back to typing.
 - The Cloudflare tunnel. Put the container behind your own HTTPS proxy.
+
+## The page on Vercel from Git
+
+`vercel.json` at the repo root serves `deploy/etch-app` as is (no build), so a Vercel project connected to this
+repository, or `vercel deploy` run at the root, publishes the same site `deploy/redeploy.sh` does. Its build step
+(`deploy/vercel-build.sh`) points the page at a backend without committing the URL:
+
+| project variable | config.json becomes |
+|---|---|
+| `ETCH_API` | `{"api": "<url>"}`: the backend itself (a tunnel or a container) |
+| `ETCH_CONFIG_URL` | `{"config_url": "<url>"}`: a URL that serves `{"api": ...}` and is kept current (deploy/tunnel.sh) |
+
+Neither set: the committed `config.json`. The backend must allow the site's origin (`ETCH_ORIGINS`).
+
+Everything a library board shows (3D, 2D board, schematic, the Make it sheet's numbers) is static, so Explore and
+the library boards work with no backend; building and changing boards, asking about parts and voice need one.

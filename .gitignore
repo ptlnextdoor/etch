@@ -54,6 +54,7 @@
 !/deploy/serve_page.py
 !/deploy/tests/
 !/deploy/redeploy.sh
+!/deploy/vercel-build.sh
 !/deploy/restart.sh
 !/deploy/tunnel.sh
 !/deploy/stt.sh
@@ -79,4 +80,5 @@ __pycache__/
 !/docs/
 !/.github/
 !/Dockerfile
+!/vercel.json
 !/.dockerignore
