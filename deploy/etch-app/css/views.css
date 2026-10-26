@@ -7,11 +7,11 @@ body.v-plan .cw, body.v-sch .cw, body.v-plan .sel-ov, body.v-sch .sel-ov, body.v
 body.v-plan #cubeHost, body.v-sch #cubeHost, body.v-plan .cam-host [data-k="ortho"], body.v-sch .cam-host [data-k="ortho"] { display: none; }
 body.v-plan .snap, body.v-sch .snap, body.v-sch .br { display: none; }
 body:not(.v-plan) .br .pv-only { display: none; }
-.pv-host, .sv-host { position: absolute; inset: 0; z-index: 8; animation: fv-in .22s var(--ease) both; }
+.pv-host, .schv-host { position: absolute; inset: 0; z-index: 8; animation: fv-in .22s var(--ease) both; }
 @keyframes fv-in { from { opacity: 0; } }
-.pv, .sv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: default; outline: 0; }
-.pv.dragging, .sv.dragging { cursor: grabbing; }
-.pv text, .sv text { font-family: var(--ui); user-select: none; pointer-events: none; }
+.pv, .schv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: default; outline: 0; }
+.pv.dragging, .schv.dragging { cursor: grabbing; }
+.pv text, .schv text { font-family: var(--ui); user-select: none; pointer-events: none; }
 .seg button[aria-disabled="true"] { opacity: .4; cursor: default; }
 .seg.lq-tabs { border-radius: 11px; padding: 3px; background: #eef1f4; gap: 2px; }
 .seg.lq-tabs .lq-tabs-ind > i { background: #fff; }
@@ -143,55 +143,55 @@ body:not(.v-plan) .br .pv-only { display: none; }
 .fv-paper-sk { width: min(640px, 70%); aspect-ratio: 297 / 210; border-radius: 16px; background: linear-gradient(100deg, #fbfaf6 30%, #fffdf8 50%, #fbfaf6 70%) 0 0 / 250% 100%; box-shadow: var(--shadow); animation: g-sk 1.2s linear infinite; }
 
 /* ---------- the schematic paper ---------- */
-.sv {
+.schv {
   --sch-paper: #fffdf8; --sch-edge: rgba(20, 24, 28, .06); --sch-grid: rgba(72, 152, 204, .08); --sch-grid-major: rgba(72, 152, 204, .16);
   --sch-ink: #14181c; --sch-fill: #f3f6f9; --sch-pin: #4a545e; --sch-nc: #7c8791; --sch-wire: #3d7fae;
   --sch-hover-fill: #e6f5ff; --sch-hover-stroke: #0b6fb3; --sch-net: #1aa3ff;
 }
-.sv .paper { fill: var(--sch-paper); stroke: var(--sch-edge); stroke-width: 1; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(16, 24, 32, .06)) drop-shadow(0 8px 28px rgba(16, 24, 32, .1)); }
-.sv.moving .paper { filter: none; }
-.sv .g1 { fill: none; stroke: var(--sch-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.sv .g10 { fill: none; stroke: var(--sch-grid-major); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.sv .paper-grid { pointer-events: none; }
-.sv.lod-grid .grid-1 { display: none; }
-.sv .sv-title { font-family: var(--serif); fill: var(--ink); }
-.sv .sv-sub { fill: var(--ink2); }
-.sv .body { stroke: var(--sch-ink); stroke-width: .18; stroke-linejoin: round; stroke-linecap: round; fill: none; transition: fill .15s, stroke .15s; }
-.sv .body.f-background { fill: var(--sch-fill); }
-.sv .body.f-outline { fill: var(--sch-ink); fill-opacity: .08; }
-.sv .body-t { fill: var(--sch-ink); text-anchor: middle; dominant-baseline: central; }
-.sv .pin-l { stroke: var(--sch-pin); stroke-width: .15; stroke-linecap: round; }
-.sv .pin-hit { stroke: transparent; stroke-width: 1.4; pointer-events: stroke; cursor: pointer; }
-.sv .pin-n { fill: var(--ink3); font-weight: 500; }
-.sv .pin-name { fill: var(--ink2); font-weight: 500; }
-.sv.lod-pins .pin-n, .sv.lod-pins .pin-name { display: none; }
-.sv .sym-t.reference { fill: var(--sch-ink); font-weight: 700; }
-.sv .sym-t.value { fill: var(--ink2); font-weight: 500; }
-.sv.lod-text .sym-t.value, .sv.lod-text .lbl-t, .sv.lod-text .sv-sub { display: none; }
-.sv .sym .hit { fill: transparent; pointer-events: all; cursor: pointer; }
-.sv .sym.power .hit { cursor: default; }
-.sv .sym.hov .body { fill: var(--sch-hover-fill); stroke: var(--sch-hover-stroke); }
-.sv .sym.power.hov .body { fill: none; stroke: var(--sch-ink); }
-.sv .so-foot { fill: rgba(26, 163, 255, .07); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
-.sv .wire { fill: none; stroke: var(--sch-wire); stroke-width: .25; stroke-linecap: round; stroke-linejoin: round; cursor: pointer; pointer-events: stroke; transition: stroke .16s, opacity .2s; }
-.sv .junction { fill: var(--sch-wire); }
-.sv .nc { stroke: var(--sch-nc); stroke-width: .2; fill: none; }
-.sv .lbl { cursor: pointer; }
-.sv .lbl .flag { fill: #fff; stroke: var(--line2); stroke-width: 1; vector-effect: non-scaling-stroke; transition: fill .16s, stroke .16s; }
-.sv .lbl:hover .flag { stroke: var(--accent); }
-.sv .lbl-t { fill: var(--ink); font-weight: 600; }
-.sv .lbl.label .lbl-t { fill: var(--sch-wire); }
-.sv .lbl.lit .flag { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
-.sv .lbl.lit .lbl-t, .sv .lbl.label.lit .lbl-t { fill: var(--accent-ink); }
-.sv .pin.lit .pin-l { stroke: var(--sch-net); stroke-width: .3; }
-.sv .wire.lit { stroke: var(--sch-net); stroke-width: .45; filter: drop-shadow(0 0 .6px rgba(26, 163, 255, .35)); }
-.sv.has-net .wire:not(.lit) { opacity: .35; }
-.sv.has-net .lbl:not(.lit) { opacity: .5; }
-.sv.draw .paper { animation: nb-rise .5s var(--ease) both; }
-.sv.draw .sym { animation: pv-fade .25s var(--d, 0ms) both; }
-.sv.draw .wire { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pv-draw .3s var(--ease) .45s forwards; }
-.sv.draw .lbls, .sv.draw .marks { animation: pv-fade .25s .5s both; }
-.sv .pv-ping { stroke: var(--accent); }
+.schv .paper { fill: var(--sch-paper); stroke: var(--sch-edge); stroke-width: 1; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(16, 24, 32, .06)) drop-shadow(0 8px 28px rgba(16, 24, 32, .1)); }
+.schv.moving .paper { filter: none; }
+.schv .g1 { fill: none; stroke: var(--sch-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.schv .g10 { fill: none; stroke: var(--sch-grid-major); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.schv .paper-grid { pointer-events: none; }
+.schv.lod-grid .grid-1 { display: none; }
+.schv .sv-title { font-family: var(--serif); fill: var(--ink); }
+.schv .sv-sub { fill: var(--ink2); }
+.schv .body { stroke: var(--sch-ink); stroke-width: .18; stroke-linejoin: round; stroke-linecap: round; fill: none; transition: fill .15s, stroke .15s; }
+.schv .body.f-background { fill: var(--sch-fill); }
+.schv .body.f-outline { fill: var(--sch-ink); fill-opacity: .08; }
+.schv .body-t { fill: var(--sch-ink); text-anchor: middle; dominant-baseline: central; }
+.schv .pin-l { stroke: var(--sch-pin); stroke-width: .15; stroke-linecap: round; }
+.schv .pin-hit { stroke: transparent; stroke-width: 1.4; pointer-events: stroke; cursor: pointer; }
+.schv .pin-n { fill: var(--ink3); font-weight: 500; }
+.schv .pin-name { fill: var(--ink2); font-weight: 500; }
+.schv.lod-pins .pin-n, .schv.lod-pins .pin-name { display: none; }
+.schv .sym-t.reference { fill: var(--sch-ink); font-weight: 700; }
+.schv .sym-t.value { fill: var(--ink2); font-weight: 500; }
+.schv.lod-text .sym-t.value, .schv.lod-text .lbl-t, .schv.lod-text .sv-sub { display: none; }
+.schv .sym .hit { fill: transparent; pointer-events: all; cursor: pointer; }
+.schv .sym.power .hit { cursor: default; }
+.schv .sym.hov .body { fill: var(--sch-hover-fill); stroke: var(--sch-hover-stroke); }
+.schv .sym.power.hov .body { fill: none; stroke: var(--sch-ink); }
+.schv .so-foot { fill: rgba(26, 163, 255, .07); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.schv .wire { fill: none; stroke: var(--sch-wire); stroke-width: .25; stroke-linecap: round; stroke-linejoin: round; cursor: pointer; pointer-events: stroke; transition: stroke .16s, opacity .2s; }
+.schv .junction { fill: var(--sch-wire); }
+.schv .nc { stroke: var(--sch-nc); stroke-width: .2; fill: none; }
+.schv .lbl { cursor: pointer; }
+.schv .lbl .flag { fill: #fff; stroke: var(--line2); stroke-width: 1; vector-effect: non-scaling-stroke; transition: fill .16s, stroke .16s; }
+.schv .lbl:hover .flag { stroke: var(--accent); }
+.schv .lbl-t { fill: var(--ink); font-weight: 600; }
+.schv .lbl.label .lbl-t { fill: var(--sch-wire); }
+.schv .lbl.lit .flag { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
+.schv .lbl.lit .lbl-t, .schv .lbl.label.lit .lbl-t { fill: var(--accent-ink); }
+.schv .pin.lit .pin-l { stroke: var(--sch-net); stroke-width: .3; }
+.schv .wire.lit { stroke: var(--sch-net); stroke-width: .45; filter: drop-shadow(0 0 .6px rgba(26, 163, 255, .35)); }
+.schv.has-net .wire:not(.lit) { opacity: .35; }
+.schv.has-net .lbl:not(.lit) { opacity: .5; }
+.schv.draw .paper { animation: nb-rise .5s var(--ease) both; }
+.schv.draw .sym { animation: pv-fade .25s var(--d, 0ms) both; }
+.schv.draw .wire { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pv-draw .3s var(--ease) .45s forwards; }
+.schv.draw .lbls, .schv.draw .marks { animation: pv-fade .25s .5s both; }
+.schv .pv-ping { stroke: var(--accent); }
 
 /* ---------- the net card in the inspector ---------- */
 .in-k { font: 600 11px/1 var(--ui); letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin-bottom: 4px; }
@@ -210,8 +210,8 @@ body:not(.v-plan) .br .pv-only { display: none; }
   .pv-dim.h { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pv-host, .sv-host { animation: fv-in .18s both; }
+  .pv-host, .schv-host { animation: fv-in .18s both; }
   .pv.draw .edge, .pv.draw .board, .pv.draw .zone, .pv.draw .track, .pv.draw .fp, .pv.draw .via, .pv.draw .silk-g,
-  .sv.draw .paper, .sv.draw .sym, .sv.draw .wire, .sv.draw .lbls, .sv.draw .marks { animation: none; stroke-dashoffset: 0; }
+  .schv.draw .paper, .schv.draw .sym, .schv.draw .wire, .schv.draw .lbls, .schv.draw .marks { animation: none; stroke-dashoffset: 0; }
   .pv-ping { animation: none; display: none; }
 }

@@ -116,8 +116,8 @@ export function drawSheet(svg, data, { title = "", stats = "" } = {}) {
 }
 
 export function createSchView(stage, { api, board, onPick, onHover, onNet, tag, onBack, announce } = {}) {
-  const root = el("div", "sv-host", { hidden: true });
-  const svg = sv("svg", { class: "sv", role: "img", tabindex: "-1" });
+  const root = el("div", "schv-host", { hidden: true });
+  const svg = sv("svg", { class: "schv", role: "img", tabindex: "-1" });
   const msg = el("div", "fv-msg", { hidden: true });
   root.append(svg, msg);
   stage.append(root);

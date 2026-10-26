@@ -27,8 +27,10 @@ import * as mine from "../my-boards.js";
 import { saveJob, readJob, clearJob, mountJobPill, jobHref, jobBoardId, DEMO } from "../ui/job-pill.js";
 import { createRenderLoader } from "./render-loader.js";
 import { bindLiquid, liquidTabs, wobble } from "../ui/goo.js";
-import { createPlanView } from "./plan-view.js";
+import { createPlanView, drawBoard } from "./plan-view.js";
 import { createSchView } from "./sch-view.js";
+import { createMakeSheet } from "./make-sheet.js";
+import { clarifyFlow, prefetchClarify, getLevel, setLevel, LEVELS } from "./clarify.js";
 
 registerSW();
 // the API client, with `authed` for the backend call (named `backend` since the access code went away)
@@ -236,6 +238,14 @@ const flatOpts = {
 };
 const plan = createPlanView($("stage"), flatOpts);
 const sch = createSchView($("stage"), flatOpts);
+// "Make it": the numbers, every check and the fab files (make-sheet.js), behind the top-bar button
+makeSheet = createMakeSheet($("stage"), {
+  api, board, viewer, download, toast,
+  change: (t) => { if (blockedDrop()) return; dock?.expand(true, { force: true }); bridge?.change(t, {}); },
+  // the small board on the sheet: the 2D renderer, mask, copper and pads only
+  mini: (host, d) => { const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.setAttribute("class", "pv l-fcu l-zones l-pads"); s.dataset.side = "F"; s.setAttribute("viewBox", `-1.5 -1.5 ${d.w + 3} ${d.h + 3}`); host.append(s); drawBoard(s, d, { mini: true }); },
+  glbHref: () => board.files?.glb || null,
+}).bind($("makeB"));
 function setNet(name, info) {
   net = name || null;
   plan.setNet(net); sch.setNet(net);
@@ -471,7 +481,7 @@ const reloadChange = async ({ run } = {}) => {
       board.id = run; board.kind = "live"; board.live = true;
       mine.retitle(run, board.meta?.title);
       history.replaceState(null, "", page("board") + carry({ id: run }));
-      setNet(null, null);
+      setNet(null, null); makeSheet?.refresh();
       if (viewMode !== "3d") { const m = viewMode; viewMode = "3d"; setView(m); }
     } else if (board.files) {
       // demo: the same board again, so the swap in place is visible
@@ -587,7 +597,7 @@ function buildLoaderOn(text) {
 async function cancelBuild() {
   try {
     const r = await bridge.cancel();
-    if (r.ok) { clearJob(); board.building = false; buildLoaderFail("Build cancelled."); lastEnd = "That build was cancelled. Tell me what your board should do and I'll start a new one."; }
+    if (r.ok) { clearJob(); board.building = false; makeSheet?.refresh(); paintViewSeg(); buildLoaderFail("Build cancelled."); lastEnd = "That build was cancelled. Tell me what your board should do and I'll start a new one."; }
   } catch (e) { toast("Couldn't cancel the build: " + e.message); rl.show("Still building", { cancel: true }); }
 }
 function buildLoaderFail(text = "The build stopped without a board.") {
@@ -617,13 +627,14 @@ function startDesign(text) {
   if (board.building) { dock.say("I'm still building your board. Give me a minute."); return; }
   board.building = true;
   board.prompt = text;
+  makeSheet?.refresh(); paintViewSeg();
   if (hero?.open) hero.collapse();
   document.body.classList.remove("nb-on");
   viewer.lookFrom([0, 1, 0.18], { fitBox: true }); // the camera eases in onto the workplane, still from above
   dock.step({ id: "nb:what", kind: "step", title: "What should your board do?", detail: text, status: "done" });
   $("crTitle").textContent = "New board";
   // no board came back (checks failed, error, build lost): stop the backdrop's building look too
-  const failed = () => { board.building = false; backdrop?.building(false); buildLoaderFail(); };
+  const failed = () => { board.building = false; backdrop?.building(false); buildLoaderFail(); makeSheet?.refresh(); paintViewSeg(); };
   bridge.design(text).then((r) => {
     if (!r || !r.ok) failed();
     if (!r && !/cancelled/.test(lastEnd)) lastEnd = "I lost track of that build, so it did not finish. Tell me what your board should do and I'll start a new one.";
@@ -717,7 +728,7 @@ function resumeNew(st) {
   viewer.empty();
   board.meta = { title: st.title || "New board" };
   board.building = true; board.prompt = st.text || "";
-  renderMenus(); renderSettings(); syncTools();
+  renderMenus(); renderSettings(); syncTools(); makeSheet?.refresh();
   document.body.classList.add("ready");
   viewer.lookFrom([0, 1, 0.18], { fitBox: true });
   dock.step({ id: "nb:what", kind: "step", title: "What should your board do?", detail: st.text || "", status: "done" });
@@ -749,6 +760,8 @@ async function startNew() {
     boardHref: (b) => page("board") + carry({ id: b.id, remix: 1 }),
     target: dockPill,
     onSubmit: (t) => { sendViaDock(t); dock.nudge?.(); },
+    level: getLevel(), levels: LEVELS, onLevel: (v) => setLevel(v),
+    onSending: (t) => prefetchClarify({ text: t, level: getLevel(), api }),
     onMic: () => { document.body.classList.remove("nb-on"); viewer.lookFrom([0, 1, 0.18], { fitBox: true }); dock.nudge?.(); dock.listen(); },
     onPick: (b) => { dock.nudge?.(); remix(b); },
   });
@@ -774,7 +787,8 @@ async function main() {
   dock = createDock(document.body, {
     onSend(text, { via } = {}) {
       const ref = sel.length === 1 ? sel[0] : null;
-      if (board.kind === "new") { if (!statusReply(text)) startDesign(text); }
+      // a new board: Etch's one to three quick questions first (clarify.js), then the build with the answers folded in
+      if (board.kind === "new") { if (statusReply(text)) return; clarifyFlow({ text, level: getLevel(), api, dock }).then((t) => { if (t != null) startDesign(t); }); }
       else if (CHANGE.test(text)) { if (blockedDrop()) return; bridge.change(text, { ref }); }
       else bridge.ask(text, { ref });
       void via;

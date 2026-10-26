@@ -1,0 +1,106 @@
+/* "Make it" (js/editor/make-sheet.js): the inspector's big sibling, a white card in the stage's right corner with the
+   board's numbers, its checks, a rough price and the fab files; a bottom sheet on phones. Plus the top-bar button and
+   its status dot. Only existing tokens: white card, 22px radius, --shadow, Averia titles, Figtree tabular numbers. */
+.mk { position: absolute; top: 14px; right: 14px; bottom: 14px; z-index: 26; width: min(384px, calc(100% - 28px)); min-height: 0; display: flex; flex-direction: column;
+  background: #fff; border-radius: 22px; box-shadow: var(--shadow); will-change: transform, opacity; }
+.mk.rm { transform: none !important; transition: opacity .18s ease !important; }
+.mk :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mk-t:focus, .mk-t:focus-visible { outline: 0; }
+
+/* header */
+.mk-head { flex: none; display: flex; align-items: flex-start; gap: 8px; padding: 18px 14px 6px 20px; }
+.mk-ht { flex: 1; min-width: 0; }
+.mk-t { margin: 0; font: 400 24px/1.1 var(--serif); color: var(--ink); }
+.mk-sub { margin: 5px 0 0; font-size: 13.5px; line-height: 1.4; color: var(--ink2); }
+.mk-x { flex: none; margin-top: -6px; }
+
+/* body: scrolls; sections 18px apart, titled like the start screen's (.nb-sl) */
+.mk-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px 20px 16px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; }
+.mk-sec { min-width: 0; flex: none; }
+.mk .nb-sl { margin: 0 0 10px; }
+
+/* this board: the mini plan, its size, then the numbers in the inspector's list style */
+.mk-size { display: flex; align-items: center; gap: 14px; }
+.mk-mini { position: relative; flex: none; width: 112px; height: 76px; border-radius: 12px; background: var(--stage); overflow: hidden; }
+.mk-mini > * { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mk-mini:not(.in)::after { content: ""; position: absolute; inset: 16px 20px; border-radius: 5px; border: 1.5px dashed rgba(40, 120, 180, .28); }
+.mk-dimw { min-width: 0; }
+.mk-dim { font: 400 22px/1.15 var(--serif); color: var(--ink); font-variant-numeric: tabular-nums; }
+.mk-dsub { margin-top: 3px; font-size: 12.5px; line-height: 1.35; color: var(--ink2); }
+.mk-dsub:empty { display: none; }
+.mk-sk { width: 120px; height: 16px; }
+.mk-nums { grid-template-columns: auto 1fr auto 1fr; gap: 6px 14px; margin: 14px 0 0; }
+
+/* checks: task rows; the rows' own padding lines their icons up with the section's text */
+.mk-sh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.mk-sh .nb-sl { margin: 0; }
+.mk-pill.ag-in { animation: ag-status-in .3s ease-out; }
+.mk-checks { margin: 0 -10px; }
+.mk .ag-task { align-items: start; }
+.mk .ag-task-ic { margin-top: 1px; }
+.mk .ag-task-ic .is-done, .mk .ag-task-ic .is-failed { animation: ag-check .32s cubic-bezier(.3, 1.5, .5, 1); }
+.mk .ag-task[data-status="neutral"] .ag-task-t { color: var(--ag-muted); }
+.mk .ag-task[data-status="neutral"] .ag-task-d, .mk .ag-task[data-status="neutral"] .ag-task-ic .ag-ic { color: var(--ink3); }
+.mk-fix { align-self: flex-start; margin-top: 6px; }
+.mk-built { margin: 10px 0 0; font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+
+/* the rough estimate, with its working */
+.mk-quote .ag-card-k { display: block; margin-bottom: 8px; }
+.mk-f { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.mk-tot { margin-top: 10px; font: 400 20px/1.2 var(--serif); color: var(--ink); font-variant-numeric: tabular-nums; }
+.mk-each { margin-top: 2px; font-size: 12.5px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.mk-fn { margin: 10px 0 0; font-size: 12px; line-height: 1.4; color: var(--ink2); }
+
+/* footer: the files, always in view */
+.mk-foot { flex: none; padding: 12px 20px 16px; border-top: 1px solid var(--line); background: #fff; border-radius: 0 0 22px 22px; }
+.mk-foot .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-decoration: none; white-space: nowrap; }
+.mk-foot .btn > span { display: inline-flex; }
+.mk-foot a.btn:not(.dark) { color: var(--ink); }
+.mk-dl { height: 42px; border-radius: 12px; font-size: 14.5px; }
+.mk-dl .ag-spin { border-color: rgba(255, 255, 255, .25); border-top-color: #fff; }
+.mk-foot .btn.dark[aria-disabled="true"] { background: #eef1f4; border-color: #eef1f4; color: var(--ink2); cursor: default; }
+.mk-foot .btn.dark[aria-disabled="true"] .ag-spin { border-color: var(--ag-accent-soft); border-top-color: var(--ag-accent); }
+.mk-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.mk-two.one { grid-template-columns: 1fr; }
+.mk-two .btn { height: 36px; padding: 0 10px; font-size: 13px; }
+.mk-two .btn .ic { color: var(--ink2); }
+.mk-two .btn[aria-disabled="true"] { color: var(--ink3); cursor: default; }
+.mk-two .btn[aria-disabled="true"]:hover { background: var(--bg); }
+.mk-two .btn[aria-disabled="true"] .ic { color: var(--ink3); }
+.mk-links { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 11px; font-size: 12px; color: var(--ink2); }
+.mk-links a, .mk-links button { border: 0; background: none; padding: 0; font: inherit; color: var(--ink2); text-decoration: none; cursor: pointer; border-radius: 4px; }
+.mk-links a:hover, .mk-links button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.mk-sep { color: var(--ink3); }
+
+/* the top-bar button: a 7px dot before the label (the .sv dot), hollow until checked */
+.mk-b, .btn:has(> .mk-dot) { display: inline-flex; align-items: center; gap: 7px; }
+.mk-dot { flex: none; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink3); transition: background-color .2s, box-shadow .2s; }
+.mk-b[data-mk="pass"] .mk-dot { background: var(--ok); box-shadow: none; }
+.mk-b[data-mk="fail"] .mk-dot { background: var(--bad); box-shadow: none; }
+.mk-b[data-mk="loading"] .mk-dot { animation: ag-pulse 1.1s ease-in-out infinite; }
+.mk-b[aria-expanded="true"] { background: #eef1f4; }
+.mk-b[aria-disabled="true"] { color: var(--ink3); cursor: default; }
+.mk-b[aria-disabled="true"]:hover { background: var(--bg); }
+.mk-b[aria-disabled="true"] .mk-dot { opacity: .5; }
+
+/* while it is open the inspector and the bottom-right controls step aside, and the dock centres on what is left */
+.insp { transition: opacity .2s ease; }
+body.mk-on .insp, body.mk-on .br { opacity: 0; pointer-events: none; }
+@media (min-width: 769px) {
+  body.ed.mk-on .ag-dock { left: max(242px, calc((100% - var(--panel) - 398px) / 2)); }
+  body.ed.rp-closed.mk-on .ag-dock { left: max(242px, calc((100% - 398px) / 2)); }
+}
+
+/* phones: a bottom sheet with the .rp look, the dock out of the way */
+@media (max-width: 768px) {
+  .mk { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 88%; z-index: 45; border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgba(16, 24, 32, .12); }
+  .mk-head { padding: 2px 10px 6px 18px; }
+  .mk-body { padding: 4px 18px 14px; }
+  .mk-foot { padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); border-radius: 0; }
+  .mk-nums { grid-template-columns: auto 1fr; }
+  body.ed .ag-dock { transition: left .42s var(--bounce), opacity .2s ease; }
+  body.mk-on .ag-dock { opacity: 0; pointer-events: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-b[data-mk="loading"] .mk-dot { animation: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
+}

@@ -5,7 +5,7 @@
 //   toolChip()         small chip for one tool call ("Read parts.json")
 //   taskRow()          running / failed / completed rows with counts and progress
 //   streamAnswer()     streamed answer: **bold**, `code`, refdes chips, mentions, follow-ups
-//   approvalCard()     a decision: options (single or multi), Skip / Continue -> Promise
+//   approvalCard()     a decision: options (single or multi), a preselected pick and a why line, Skip / Continue -> Promise
 //   recommendCard()    a proposed change with a confidence meter, Accept / Alternatives -> Promise
 //   bindMentions()     one delegated listener that turns refdes chip hovers and clicks into callbacks
 // New elements arrive with the .lq-in liquid entrance (see css/agent.css); nothing here reads layout per frame.
@@ -616,40 +616,51 @@ function settleCard(root, summary) {
   const s = el("div", "ag-card-sum lq-in", icon("done", "is-done"), el("span", "", summary));
   root.append(s);
 }
-const optOf = (o, i) => (typeof o === "string" ? { value: o, label: o } : { value: o.value ?? o.id ?? o.label ?? String(i), label: o.label ?? o.value ?? o.id ?? String(o), detail: o.detail });
+const optOf = (o, i) => (typeof o === "string" ? { value: o, label: o } : { value: o.value ?? o.id ?? o.label ?? String(i), label: o.label ?? o.value ?? o.id ?? String(o), detail: o.detail, recommended: !!o.recommended });
 
-/** approvalCard({ question, options, multi }) -> { el, promise, cancel() }; resolves string[] or null (skipped). */
-export function approvalCard({ question = "", options = [], multi = false, kicker = "Your call" } = {}) {
+/** approvalCard({ question, options, multi, kicker, picked, why, pickLabel, goLabel }) -> { el, promise, cancel(), focus() };
+ *  resolves string[] or null (skipped). An option is a string or { value | id, label, detail, recommended }.
+ *  picked: values chosen from the start (Continue is ready at once); why: one line under the question, which also
+ *  describes the card; an option with recommended: true carries a spark and pickLabel ("Etch's pick") for good, even
+ *  after another is picked. Enter anywhere in the card but Skip presses the primary (goLabel); on a single choice it
+ *  takes the focused option first. */
+export function approvalCard({ question = "", options = [], multi = false, kicker = "Your call", picked: pre = [], why = "", pickLabel = "Etch's pick", goLabel = "Continue" } = {}) {
   const { root } = cardShell("ag-ask", kicker);
   const qid = "ag-q-" + Math.random().toString(36).slice(2, 8);
   const q = el("div", "ag-card-q", question); q.id = qid;
   root.setAttribute("aria-labelledby", qid);
+  const d = why ? el("div", "ag-card-d", why) : null;
+  if (d) { d.id = qid + "-d"; root.setAttribute("aria-describedby", d.id); }
   const opts = options.map(optOf);
   const box = el("div", "ag-opts");
   box.setAttribute("role", multi ? "group" : "radiogroup");
   box.setAttribute("aria-labelledby", qid);
-  const picked = new Set();
+  const known = new Set(opts.map((o) => o.value));
+  const picked = new Set([].concat(pre ?? []).filter((v) => known.has(v)).slice(0, multi ? Infinity : 1));
   const btns = opts.map((o, i) => {
-    const b = el("button", "ag-opt lq-btn", el("span", "ag-opt-box", icon("done")), el("span", "ag-opt-txt", el("span", "ag-opt-l", o.label), o.detail ? el("span", "ag-opt-d", o.detail) : null));
+    const b = el("button", "ag-opt lq-btn", el("span", "ag-opt-box", icon("done")), el("span", "ag-opt-txt", el("span", "ag-opt-l", o.label), o.detail ? el("span", "ag-opt-d", o.detail) : null),
+      o.recommended && pickLabel ? el("span", "ag-opt-pick", icon("spark"), pickLabel) : null);
     b.type = "button";
     b.setAttribute("role", multi ? "checkbox" : "radio");
     b.setAttribute("aria-checked", "false");
     b.style.animationDelay = i * 50 + "ms";
     b.classList.add("lq-in");
     squish(b, { amount: 0.6 });
-    b.addEventListener("click", () => {
-      if (multi) { if (picked.has(o.value)) picked.delete(o.value); else picked.add(o.value); }
-      else { picked.clear(); picked.add(o.value); }
-      paint();
-    });
+    b.addEventListener("click", () => choose(i));
     return b;
   });
   box.append(...btns);
-  const skip = el("button", "ag-btn ghost lq-btn", "Skip"), go = el("button", "ag-btn primary lq-btn", "Continue");
+  const skip = el("button", "ag-btn ghost lq-btn", "Skip"), go = el("button", "ag-btn primary lq-btn", goLabel);
   skip.type = go.type = "button";
   squish(skip); squish(go);
   const acts = el("div", "ag-card-acts", skip, go);
-  root.append(q, box, acts);
+  root.append(...[q, d, box, acts].filter(Boolean));
+  function choose(i) {
+    const v = opts[i].value;
+    if (multi) { if (picked.has(v)) picked.delete(v); else picked.add(v); }
+    else { picked.clear(); picked.add(v); }
+    paint();
+  }
   const paint = () => {
     btns.forEach((b, i) => { const on = picked.has(opts[i].value); b.classList.toggle("on", on); b.setAttribute("aria-checked", on ? "true" : "false"); });
     go.disabled = picked.size === 0;
@@ -665,7 +676,23 @@ export function approvalCard({ question = "", options = [], multi = false, kicke
   };
   skip.addEventListener("click", () => finish(null));
   go.addEventListener("click", () => { if (picked.size) finish(opts.map((o) => o.value).filter((v) => picked.has(v))); });
-  return { el: root, promise, cancel: () => finish(null), get open() { return open; }, focus: () => (btns[0] || go).focus() };
+  // Enter presses the primary from anywhere in the card but Skip; the arrows move through a single choice
+  root.addEventListener("keydown", (e) => {
+    if (!open || e.isComposing || e.altKey || e.ctrlKey || e.metaKey) return;
+    const i = btns.indexOf(e.target);
+    if (e.key === "Enter" && e.target !== skip) {
+      if (!multi && i >= 0) choose(i);
+      if (go.disabled) return;
+      e.preventDefault();
+      go.click();
+    } else if (!multi && i >= 0 && /^Arrow(Up|Down|Left|Right)$/.test(e.key)) {
+      e.preventDefault();
+      const j = (i + (/Down|Right/.test(e.key) ? 1 : -1) + btns.length) % btns.length;
+      choose(j); btns[j].focus();
+    }
+  });
+  const focus = () => (btns.find((b) => b.classList.contains("on")) || btns[0] || go).focus();
+  return { el: root, promise, cancel: () => finish(null), get open() { return open; }, focus };
 }
 
 /** recommendCard({ title, detail, confidence 0..1 or 0..100, actions }) -> { el, promise, cancel() }; resolves an action or null.

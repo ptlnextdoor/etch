@@ -30,8 +30,8 @@ test("the view switch shows the board flat and as a schematic @phone", async ({ 
   expect(await page.evaluate(() => location.search)).toContain("view=plan");
   await page.click('#viewSeg [data-value="sch"]');
   await expect(page.locator("body")).toHaveClass(/v-sch/);
-  await expect(page.locator(".sv .sym")).toHaveCount(5); // 4 parts + the PWR_FLAG
-  await expect(page.locator(".sv .sv-sub")).toHaveText("Schematic · 4 parts · 4 nets");
+  await expect(page.locator(".schv .sym")).toHaveCount(5); // 4 parts + the PWR_FLAG
+  await expect(page.locator(".schv .sv-sub")).toHaveText("Schematic · 4 parts · 4 nets");
   await page.click('#viewSeg [data-value="3d"]');
   await expect(page.locator("body")).toHaveClass(/v-3d/);
   await expect(page.locator(".pv-host")).toBeHidden();
@@ -55,20 +55,20 @@ test("a pad lights its net everywhere and the inspector shows the net", async ({
   // the schematic keeps the lit net; its labels light up
   await page.locator('.insp .act:has-text("Schematic")').click();
   await expect(page.locator("body")).toHaveClass(/v-sch/);
-  await expect(page.locator(".sv .lbl.lit")).toHaveCount(3);
+  await expect(page.locator(".schv .lbl.lit")).toHaveCount(3);
   // Esc clears the net first
   await page.keyboard.press("Escape");
   expect(await page.evaluate(() => window.__editor.net)).toBeNull();
-  await expect(page.locator(".sv .lbl.lit")).toHaveCount(0);
+  await expect(page.locator(".schv .lbl.lit")).toHaveCount(0);
 });
 
 test("selection follows between the schematic, the list and the flat board", async ({ page }) => {
   await open(page);
   await page.keyboard.press("3");
-  await page.waitForSelector(".sv .sym");
-  await page.locator('.sv .sym[data-ref="U1"] .hit').click({ force: true });
+  await page.waitForSelector(".schv .sym");
+  await page.locator('.schv .sym[data-ref="U1"] .hit').click({ force: true });
   expect(await page.evaluate(() => window.__editor.sel)).toEqual(["U1"]);
-  await expect(page.locator(".sv .so-foot")).toHaveCount(1);
+  await expect(page.locator(".schv .so-foot")).toHaveCount(1);
   await expect(page.locator(".insp .in-t b")).toHaveText("U1");
   await openPlan(page);
   await expect(page.locator('.pv .fp[data-ref="U1"]')).toHaveClass(/on/);

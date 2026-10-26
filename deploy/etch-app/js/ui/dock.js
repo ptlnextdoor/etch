@@ -5,7 +5,7 @@
 //
 //   const dock = createDock(hostEl, { onSend(text, { via }), onMention(ref, { hover }), partScreenPos(ref) })
 //   see the method list at the bottom of createDock (setState, setStatus, setLevel, step, loader, answerStart,
-//   answerAppend, answerEnd, ask, recommend, say, listen, clear, expand, lookAt, emote).
+//   answerAppend, answerEnd, ask, cancelAsk, recommend, say, listen, clear, expand, lookAt, emote).
 // It starts and stays collapsed: Etch working, talking or answering never opens it; expand(true, { force: true }) is
 // for an explicit user action only.
 //
@@ -632,17 +632,22 @@ export function createDock(hostEl, opts = {}) {
       stick();
     },
 
-    ask({ id, question, options = [], multi = false } = {}) {
+    // picked / why / pickLabel / goLabel / kicker go to approvalCard as they are; focus moves the keyboard onto the
+    // card's picked option, only while the dock is open (focus inside would open it otherwise)
+    ask({ id, question, options = [], multi = false, picked, why, pickLabel, goLabel, kicker, focus = false } = {}) {
       const key = id ?? "ask:" + Math.random();
       if (cards.has(key)) cards.get(key).cancel();
-      const c = approvalCard({ question, options, multi });
+      const c = approvalCard({ question, options, multi, picked, why, pickLabel, goLabel, kicker });
       place(cur(), c.el);
       cards.set(key, c);
       pending++; if (forced === false) forced = null; update(); paintBadge();
+      if (focus && open) requestAnimationFrame(() => { if (c.open && open) c.focus(); });
       eyes.react("surprise");
       c.promise.finally(() => { if (cards.get(key) === c) cards.delete(key); pending = Math.max(0, pending - 1); update(); paintBadge(); });
       return c.promise;
     },
+    // settle a waiting ask() card as skipped (its promise resolves null); false when there is none with that id
+    cancelAsk(id) { const c = cards.get(id); if (c) c.cancel(); return !!c; },
     recommend({ id, title, detail, confidence, actions } = {}) {
       const key = id ?? "rec:" + Math.random();
       if (cards.has(key)) cards.get(key).cancel();
