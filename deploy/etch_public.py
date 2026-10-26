@@ -47,6 +47,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import explore
+import views
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "engine" / "out"
@@ -1032,6 +1033,7 @@ def gallery() -> list[dict]:
             if concept:
                 seen.add(concept)
             keys.append(key)
+            st = views.cached_only(d.name, "stats.json") or {}
             rows.append(
                 {
                     "id": d.name,
@@ -1041,10 +1043,14 @@ def gallery() -> list[dict]:
                     "kinds": _part_count(d)[1],
                     "started": info["started"],
                     "seconds": info["seconds"],
+                    # the board's numbers for the card (deploy/views.py stats, read only when already cached;
+                    # views.warm fills the cache in the background): absent until known
+                    **{k: st[k] for k in ("w", "h", "layers", "vias") if st.get(k) is not None},
                 }
             )
         if unnamed and not CONCEPTS_BUSY.locked():
             threading.Thread(target=_name_concepts, args=(unnamed,), daemon=True).start()
+        views.warm([r["id"] for r in rows if "w" not in r])
         GALLERY_CACHE.update(t=time.time(), rows=rows)
         try:
             tmp = GALLERY_FILE.with_suffix(".tmp")
@@ -1287,6 +1293,18 @@ class H(BaseHTTPRequestHandler):
             return self.send_json({"builds": library(), "now": round(time.time(), 1)})
         if u.path == "/etch/gallery":
             return self.send_json({"builds": gallery(), "now": round(time.time(), 1)})
+        if u.path in ("/etch/pcb2d", "/etch/schematic", "/etch/stats"):
+            # the 2D views and the numbers of a finished build (deploy/views.py), parsed from its KiCad files
+            # and cached in view/; only live-* runs with a design.json, anything else is 404
+            run = urllib.parse.parse_qs(u.query).get("id", [""])[0]
+            fn = {"/etch/pcb2d": views.pcb2d, "/etch/schematic": views.sheet, "/etch/stats": views.stats}[u.path]
+            try:
+                res = fn(run)
+            except (OSError, ValueError, RecursionError) as e:
+                return self.send_json({"error": f"could not read this board: {type(e).__name__}"}, 500)
+            if res is None:
+                return self.send_json({"error": "not found"}, 404)
+            return self.send_json(res)
         if u.path == "/etch/run":
             run = urllib.parse.parse_qs(u.query).get("id", [""])[0]
             evs = run_events(run)
@@ -1551,6 +1569,14 @@ class H(BaseHTTPRequestHandler):
         threading.Thread(target=worker, args=(job,), daemon=True).start()
         return self.send_json({"ok": True, "job": job.id, "token": job.token})
 
+    def post_clarify(self, ip: str):
+        """The questions Etch asks before a design build (deploy/views.py clarify): rules, no model, no limits."""
+        body = self.json_body()
+        text = re.sub(r"\s+", " ", str(body.get("text", ""))).strip()[:MAX_TEXT]
+        if not text:
+            raise explore.ExploreError("Tell me what your board should do.")
+        return self.send_json(views.clarify(text, str(body.get("level", "hobbyist"))))
+
     # ---- Explore + board view (EXPLORE_API.md section 2)
     def json_body(self, cap: int = 8192) -> dict:
         try:
@@ -1729,6 +1755,7 @@ EXPLORE_POST = {
     "/etch/comments/reply": H.post_reply,
     "/etch/comments/delete": H.post_delete,
     "/etch/change": H.post_change,
+    "/etch/clarify": H.post_clarify,
 }
 
 

@@ -1,0 +1,11 @@
+{
+ "name": "blinky",
+ "title": "USB-C night light",
+ "voltage": "5V",
+ "parts": [
+  {"ref": "U1", "piece": "lcsc:LCSC_C16581:TP4056@ESOP-8", "value": "TP4056", "group": "power", "why": "Charges the cell from USB", "pins": {"4": "GND", "8": "VBUS", "5": "BAT"}},
+  {"ref": "R1", "piece": "kicad:Device:R@R_0603_1608Metric", "value": "330R", "group": "light", "why": "Sets the LED current", "pins": {"1": "VBUS", "2": "LED_A"}},
+  {"ref": "D1", "piece": "kicad:Device:LED@LED_0603_1608Metric", "value": "Red", "group": "light", "why": "The light", "pins": {"1": "GND", "2": "LED_A"}},
+  {"ref": "J1", "piece": "kicad:Connector:Conn_01x02@PinHeader_1x02_P2.54mm_Vertical", "value": "BAT", "group": "power", "why": "The cell plugs in here", "pins": {"1": "BAT", "2": "GND"}}
+ ]
+}
