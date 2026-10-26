@@ -203,6 +203,7 @@ body:not(.v-plan) .br .pv-only { display: none; }
   body.v-plan .br { left: 50px; right: 58px; top: 10px; bottom: auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; }
   body.v-plan .br .pill-btn { padding: 0 8px; font-size: 12px; height: 30px; }
   body.v-plan .br .seg.sides button { padding: 0 8px; }
+  body.v-plan .br > .relpos:not(.pv-only) { display: none; } /* board colours are set in 3D on a phone */
   .pv-scale { bottom: 84px; left: 10px; }
   body:has(.insp:not([hidden])) .pv-scale { display: none; }
   .pop.layers { bottom: auto; top: calc(100% + 8px); transform-origin: top right; }
