@@ -73,7 +73,7 @@ repository, or `vercel deploy` run at the root, publishes the same site `deploy/
 | `ETCH_API` | `{"api": "<url>"}`: the backend itself (a tunnel or a container) |
 | `ETCH_CONFIG_URL` | `{"config_url": "<url>"}`: a URL that serves `{"api": ...}` and is kept current (deploy/tunnel.sh) |
 
-Neither set: the committed `config.json`. The backend must allow the site's origin (`ETCH_ORIGINS`).
+Neither set: the backend the live site already points at is kept (the build reads its production `config.json`), so deploying new code never moves the site off its backend; a project with no live site gets the committed `config.json`. The backend must allow the site's origin (`ETCH_ORIGINS`).
 
 Everything a library board shows (3D, 2D board, schematic, the Make it sheet's numbers) is static, so Explore and
 the library boards work with no backend; building and changing boards, asking about parts and voice need one.
