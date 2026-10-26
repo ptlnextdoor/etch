@@ -1,7 +1,7 @@
 // Client for Etch's board endpoints (deploy/EXPLORE_API.md section 2). API base: ?api= or config.json (which may point at config_url, the live backend URL that the tunnel publishes).
 // Falls back to mock-api.js with ?mock=1, when no API base is configured, or when an endpoint is missing (404).
 // When the configured engine can't be reached, calls throw an error marked `offline` instead of answering with demo text.
-import { Q } from "./common.js";
+import { Q, WORLD, slugOf } from "./common.js";
 import * as mock from "./mock-api.js";
 
 let API = "", ready = null;
@@ -125,4 +125,38 @@ export async function stt(buf) {
 export function tts(text) {
   return backend("/etch/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: String(text).slice(0, 400) }) })
     .then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+}
+
+// ---- the 2D views, the numbers and the questions (API.md "2D views, numbers and questions") ----
+// view("pcb2d" | "schematic" | "stats", run): the build's flat board, its schematic or its numbers. A board the engine
+// did not build (gh:, a local file) has none: the call throws an error with status 404, which the page shows as its
+// empty state. With ?mock=1 or no backend, the demo build's data (fixtures/views/*.json) stands in for any board.
+export async function view(kind, run) {
+  await init();
+  // a library board: its views were prerendered next to its 3D model (library/flat_views.py); it has no stats
+  if (/^gh:/.test(String(run)) && Q.get("mock") !== "1") {
+    if (kind === "stats") throw Object.assign(new Error("not found"), { status: 404 });
+    const r = await fetch(`${WORLD}boards/${slugOf(run)}/${kind === "schematic" ? "schematic" : "pcb2d"}.json`);
+    if (!r.ok) throw Object.assign(new Error("not found"), { status: 404 });
+    return r.json();
+  }
+  if (status.mock || !API) return fetch(`fixtures/views/${kind}.json`).then((r) => { if (!r.ok) throw Object.assign(new Error("not found"), { status: 404 }); return r.json(); });
+  const r = await backend(`/etch/${kind}?id=${encodeURIComponent(run)}`);
+  return parse(r);
+}
+// clarify(text, level): the questions Etch asks before a design build, with its recommended answer marked
+export async function clarify(text, level = "hobbyist") {
+  await init();
+  if (status.mock || !API) return fetch("fixtures/views/clarify.json").then((r) => r.json());
+  const r = await backend("/etch/clarify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, level }) });
+  return parse(r);
+}
+// exportCheck(run): GET /etch/export runs ERC and DRC again on the files that go in the fab zip, no download
+export async function exportCheck(run) {
+  await init();
+  if (status.mock || !API) return { ok: true, cached: true, files: 12, bytes: 0, checks: { erc_errors: 0, drc_violations: 0, unconnected: 0, parity: 0 } };
+  const r = await backend(`/etch/export?id=${encodeURIComponent(run)}`);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok && r.status !== 409) { const e = new Error(j.error || `error ${r.status}`); e.status = r.status; throw e; }
+  return j; // {ok: false, reasons} on a failed check
 }

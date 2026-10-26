@@ -446,6 +446,7 @@ export function createCameraButtons(hostEl, { home, fit, zoomIn, zoomOut, toggle
   let ortho = false;
   const orthoBtn = make("Switch to orthographic", ICONS.persp, () => toggleOrtho?.(!ortho));
   orthoBtn.setAttribute("aria-pressed", "false");
+  orthoBtn.dataset.k = "ortho";
 
   function setOrtho(on) {
     ortho = !!on;

@@ -15,6 +15,8 @@
 <link rel="stylesheet" href="css/editor.css?v=5">
 <link rel="stylesheet" href="css/agent.css?v=1">
 <link rel="stylesheet" href="css/new-board.css?v=1">
+<link rel="stylesheet" href="css/views.css?v=1">
+<link rel="stylesheet" href="css/make-sheet.css?v=1">
 <script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 <link rel="modulepreload" href="vendor/three/build/three.module.min.js">
 <link rel="modulepreload" href="vendor/three/examples/jsm/loaders/GLTFLoader.js">
@@ -28,6 +30,9 @@
 <link rel="modulepreload" href="js/editor/parts-panel.js">
 <link rel="modulepreload" href="js/editor/new-board.js">
 <link rel="modulepreload" href="js/editor/start-backdrop.js">
+<link rel="modulepreload" href="js/editor/plan-view.js">
+<link rel="modulepreload" href="js/editor/sch-view.js">
+<link rel="modulepreload" href="js/editor/pan-zoom.js">
 <link rel="modulepreload" href="js/board-viewer.js">
 <link rel="modulepreload" href="js/common.js">
 <link rel="modulepreload" href="js/etch-api.js">
@@ -70,7 +75,7 @@
     </nav>
     <div class="top-r">
       <span class="relpos"><button class="btn" id="importB" aria-haspopup="menu">Import</button><div class="pop menu" id="importPop" role="menu"></div></span>
-      <span class="relpos"><button class="btn" id="exportB" aria-haspopup="menu">Export</button><div class="pop menu" id="exportPop" role="menu"></div></span>
+      <button class="btn" id="makeB" title="Checks, numbers and the files to get it made"><span class="mk-dot" aria-hidden="true"></span>Make it</button>
       <button class="btn" id="saveB" title="Save to My boards (Ctrl+S). Kept in this browser only.">Save</button>
       <button class="btn dark" id="shareB">Share</button>
     </div>
@@ -85,10 +90,10 @@
       <button class="ib" id="undoB" title="Undo (Ctrl+Z)" aria-label="Undo"></button>
       <button class="ib" id="redoB" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"></button>
     </div>
-    <div class="tg view seg" id="viewSeg" role="group" aria-label="View">
-      <button data-v="3d" class="on" aria-pressed="true">3D</button>
-      <button data-v="top" aria-pressed="false">Top</button>
-      <button data-v="ortho" aria-pressed="false">Ortho</button>
+    <div class="tg view seg" id="viewSeg" aria-label="View">
+      <button type="button" data-value="3d" class="on" title="The board in 3D (1)">3D</button>
+      <button type="button" data-value="plan" aria-label="Flat board, 2D" title="The board flat: copper, pads, silk (2)">2D</button>
+      <button type="button" data-value="sch" title="The schematic Etch drew for this board (3)">Schematic</button>
     </div>
     <div class="tg right">
       <button class="ib" id="showAllB" title="Show all parts" aria-label="Show all parts"></button>
@@ -102,7 +107,7 @@
     <div class="poster" id="poster" aria-hidden="true"><canvas id="posterC" width="640" height="400"></canvas></div>
     <svg class="sel-ov" id="selOv" aria-hidden="true"></svg>
     <div class="hover-tag" id="htag" aria-hidden="true"></div>
-    <div class="ghost" id="ghost" aria-hidden="true"><div class="g-img"></div><div class="g-tag"></div></div>
+    <div class="drag-ghost" id="ghost" aria-hidden="true"><div class="g-img"></div><div class="g-tag"></div></div>
     <div class="stage-err" id="err" role="alert"><div></div></div>
     <div class="navc" id="navc">
       <div class="cube-host" id="cubeHost"></div>
@@ -110,10 +115,16 @@
     </div>
     <div class="insp" id="insp" hidden></div>
     <div class="br" id="br">
+      <div class="seg sides pv-only" id="sideSeg" role="group" aria-label="Board side">
+        <button type="button" data-v="F" class="on" aria-pressed="true" title="Looking at the top of the board (B flips)">Top</button>
+        <button type="button" data-v="B" aria-pressed="false" title="Looking at the bottom, mirrored (B flips)">Bottom</button>
+      </div>
+      <span class="relpos pv-only"><button class="pill-btn" id="layersB" aria-haspopup="dialog">Layers</button><div class="pop layers" id="layersPop" role="dialog" aria-label="Layers"></div></span>
       <span class="relpos"><button class="pill-btn" id="setB" aria-haspopup="dialog">Settings</button><div class="pop settings" id="setPop" role="dialog" aria-label="Board settings"></div></span>
       <label class="snap">Snap grid <select id="snapS" aria-label="Snap grid"><option>0.1</option><option>0.25</option><option>0.5</option><option selected>1.0</option><option>2.0</option><option>5.0</option></select> mm</label>
     </div>
     <div class="credits" id="credits"></div>
+    <div class="vis-hidden" id="viewLive" role="status" aria-live="polite"></div>
   </section>
   <aside class="rp" id="rp" aria-label="Parts">
     <button class="rp-chev" id="rpChev" aria-label="Collapse panel" title="Collapse panel"></button>

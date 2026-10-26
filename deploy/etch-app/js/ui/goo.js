@@ -3,7 +3,8 @@
 //   gooFilter()        inject the filter once, returns the CSS filter value
 //   spawnBlob()        a blob that buds off a parent, stretches while it travels, settles; .absorb() drops it back in
 //   squish(el)         press squish + wobble back for any button (.lq-btn are bound by bindLiquid())
-//   liquidTabs(el)     segmented control whose indicator stretches between tabs and pinches thin while it moves
+//   liquidTabs(el)     segmented control (tabs, or a radio group) whose indicator stretches between choices and
+//                      pinches thin while it moves
 // Content never goes inside the goo layer (it would blur); it sits in a layer above that follows the same springs.
 import { spring, reducedMotion, clamp, lerp } from "./spring.js";
 
@@ -142,14 +143,17 @@ export function bindLiquid(root = document) {
 }
 
 /**
- * liquidTabs(el, { value, onChange(value) })
+ * liquidTabs(el, { value, onChange(value), role: "tab" | "radio" })
  * el holds buttons with data-value (role="tab" is added). A goo indicator behind them stretches from the old tab to
  * the new one: the leading edge runs ahead, the trailing edge catches up, and the middle thins while stretched.
+ * role "radio" makes it a choice instead of tabs: the group is a radiogroup and each button a radio with aria-checked
+ * (the up and down arrows move too).
  * Returns { value, set(value), destroy() }.
  */
-export function liquidTabs(el, { value, onChange } = {}) {
+export function liquidTabs(el, { value, onChange, role = "tab" } = {}) {
+  const radio = role === "radio";
   el.classList.add("lq-tabs");
-  el.setAttribute("role", el.getAttribute("role") || "tablist");
+  el.setAttribute("role", el.getAttribute("role") || (radio ? "radiogroup" : "tablist"));
   const tabs = () => Array.from(el.querySelectorAll("[data-value]"));
   const ind = document.createElement("div");
   ind.className = "lq-tabs-ind";
@@ -176,7 +180,7 @@ export function liquidTabs(el, { value, onChange } = {}) {
   }
   function measure() {
     const t = tabs().find((b) => b.dataset.value === cur);
-    if (!t) return;
+    if (!t || !t.offsetWidth) return; // not laid out yet (a hidden pane): the first real size jumps into place
     const l = t.offsetLeft, w = t.offsetWidth, h = t.offsetHeight, top = t.offsetTop;
     const oldL = geo.l, oldR = geo.r;
     geo = { l, r: l + w, h, top };
@@ -192,8 +196,8 @@ export function liquidTabs(el, { value, onChange } = {}) {
     for (const b of tabs()) {
       const on = b.dataset.value === cur;
       b.classList.toggle("on", on);
-      b.setAttribute("role", "tab");
-      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.setAttribute("role", radio ? "radio" : "tab");
+      b.setAttribute(radio ? "aria-checked" : "aria-selected", on ? "true" : "false");
       b.tabIndex = on ? 0 : -1;
     }
   }
@@ -206,8 +210,8 @@ export function liquidTabs(el, { value, onChange } = {}) {
   const key = (e) => {
     const list = tabs(), i = list.findIndex((b) => b.dataset.value === cur);
     let j = -1;
-    if (e.key === "ArrowRight") j = (i + 1) % list.length;
-    else if (e.key === "ArrowLeft") j = (i - 1 + list.length) % list.length;
+    if (e.key === "ArrowRight" || (radio && e.key === "ArrowDown")) j = (i + 1) % list.length;
+    else if (e.key === "ArrowLeft" || (radio && e.key === "ArrowUp")) j = (i - 1 + list.length) % list.length;
     else if (e.key === "Home") j = 0;
     else if (e.key === "End") j = list.length - 1;
     if (j < 0) return;

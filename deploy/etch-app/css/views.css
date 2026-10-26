@@ -1,0 +1,223 @@
+/* The editor's flat views (js/editor/plan-view.js, sch-view.js): the 2D board and the schematic over the 3D stage,
+   their chrome (Top · Bottom, Layers, scale bar, dimensions) and their loading, empty and error states. Loaded after
+   editor.css; same tokens, same white cards on the pale stage. */
+
+/* ---------- which view is up: the body class drives the chrome ---------- */
+body.v-plan .cw, body.v-sch .cw, body.v-plan .sel-ov, body.v-sch .sel-ov, body.v-plan .bv-labels, body.v-sch .bv-labels { opacity: 0 !important; pointer-events: none; }
+body.v-plan #cubeHost, body.v-sch #cubeHost, body.v-plan .cam-host [data-k="ortho"], body.v-sch .cam-host [data-k="ortho"] { display: none; }
+body.v-plan .snap, body.v-sch .snap { display: none; }
+body.v-sch .br { visibility: hidden; pointer-events: none; }
+body:not(.v-plan) .br .pv-only { display: none; }
+.pv-host, .schv-host { position: absolute; inset: 0; z-index: 8; animation: fv-in .22s var(--ease) both; }
+@keyframes fv-in { from { opacity: 0; } }
+.pv, .schv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: default; outline: 0; }
+.pv.dragging, .schv.dragging { cursor: grabbing; }
+.pv text, .schv text { font-family: var(--ui); user-select: none; pointer-events: none; }
+.seg button[aria-disabled="true"] { opacity: .4; cursor: default; }
+.seg.lq-tabs { border-radius: 11px; padding: 3px; background: #eef1f4; gap: 2px; }
+.seg.lq-tabs .lq-tabs-ind > i { background: #fff; }
+.seg.lq-tabs .lq-cap { border-radius: 8px; }
+.seg.lq-tabs button { font: 600 14px var(--ui); color: var(--ink2); padding: 0 14px; }
+.seg.lq-tabs button.on { color: var(--ink); }
+
+/* ---------- 2D board colours on the light stage ---------- */
+.pv {
+  --pcb-grid: rgba(72, 152, 204, .09); --pcb-grid-major: rgba(72, 152, 204, .2);
+  --pcb-mask: #1d6b3c; --pcb-mask-lip: #175a32; --pcb-zone: #24734a; --pcb-track: #33905a;
+  --pcb-pad: #dfb85e; --pcb-pad-rim: #b48f3a; --pcb-via: #c9a650;
+  --pcb-drill: #f4f6f8; --pcb-drill-rim: rgba(10, 30, 18, .45);
+  --pcb-silk: #f5f5f1; --pcb-edge: #0e3f22; --pcb-shadow: rgba(16, 24, 32, .14);
+  --pcb-hover: #7fcfff; --pcb-sel: #1aa3ff; --pcb-sel-fill: rgba(26, 163, 255, .16); --pcb-sel-text: #bfe6ff;
+  --pcb-net: #9be0ff; --pcb-net-glow: rgba(26, 163, 255, .55); --pcb-net-pad: #ffe39a; --pcb-dim: .3;
+  --mask-hex: #1d6b3c;
+}
+.pv[data-side="B"] { --pcb-mask: #185c34; --pcb-zone: #1f6a42; --pcb-track: #2d8352; }
+.pv[data-finish="HASL"] { --pcb-pad: #cfd3d7; --pcb-pad-rim: #9aa1a8; --pcb-via: #b9bec4; }
+.pv[data-silk="black"] { --pcb-silk: #1b1b1b; } .pv[data-silk="yellow"] { --pcb-silk: #f3d43c; }
+.pv[data-mask]:not([data-mask="green"]) {
+  --pcb-mask: var(--mask-hex); --pcb-mask-lip: color-mix(in srgb, var(--mask-hex) 85%, black);
+  --pcb-zone: color-mix(in srgb, var(--mask-hex) 92%, white); --pcb-track: color-mix(in srgb, var(--mask-hex) 80%, white);
+  --pcb-edge: color-mix(in srgb, var(--mask-hex) 60%, black);
+}
+.pv[data-mask="white"] { --pcb-zone: #e6e6e1; --pcb-track: #d6d6cf; --pcb-edge: #9aa1a8; --pcb-silk: #1b1b1b; }
+.pv[data-mask="black"] { --pcb-zone: #222222; --pcb-track: #303030; --pcb-edge: #000000; }
+
+/* grid: 1 mm lines fade out below 4 px per mm */
+.pv .g1 { fill: none; stroke: var(--pcb-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pv .g10 { fill: none; stroke: var(--pcb-grid-major); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pv.lod-grid .grid-1 { display: none; }
+.pv[data-mini="1"] .pv-grid { display: none; }
+/* the board slab */
+.pv .board { fill: var(--pcb-mask); fill-rule: evenodd; stroke: none; filter: drop-shadow(0 6px 11px var(--pcb-shadow)); transition: fill .3s; }
+.pv .lip { fill: none; stroke: var(--pcb-mask-lip); stroke-width: 1.4; pointer-events: none; }
+.pv.moving .board, .pv[data-mini="1"] .board { filter: none; }
+.pv .edge { fill: none; stroke: var(--pcb-edge); stroke-width: 1.2; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* copper through the mask; only the side you face by default, the far side when its layer is on */
+.pv .zone { fill: var(--pcb-zone); stroke: none; transition: fill .16s, opacity .2s; }
+.pv .track { fill: none; stroke: var(--pcb-track); stroke-linecap: round; stroke-linejoin: round; transition: stroke .16s, opacity .2s; }
+.pv .zones, .pv .tracks { display: none; }
+.pv[data-side="F"].l-fcu .zones.s-F, .pv[data-side="F"].l-fcu .tracks.s-F, .pv[data-side="B"].l-fcu .zones.s-F, .pv[data-side="B"].l-fcu .tracks.s-F { display: inline; }
+.pv.l-bcu .zones.s-B, .pv.l-bcu .tracks.s-B { display: inline; }
+.pv[data-side="B"] .zones.s-B, .pv[data-side="B"] .tracks.s-B { display: inline; }
+.pv[data-side="B"]:not(.l-fcu) .zones.s-F, .pv[data-side="B"]:not(.l-fcu) .tracks.s-F { display: none; }
+.pv[data-side="F"]:not(.l-bcu) .zones.s-B, .pv[data-side="F"]:not(.l-bcu) .tracks.s-B { display: none; }
+.pv:not(.l-zones) .zone { display: none; }
+/* the far side's copper is a ghost under the mask */
+.pv[data-side="F"] .zones.s-B, .pv[data-side="F"] .tracks.s-B, .pv[data-side="B"] .zones.s-F, .pv[data-side="B"] .tracks.s-F { opacity: .45; }
+/* pads: gold through the mask openings, with a thin rim; the far side's pads stay hidden */
+.pv .pad { fill: var(--pcb-pad); stroke: var(--pcb-pad-rim); stroke-width: .06; transition: fill .16s, opacity .2s; }
+.pv[data-side="F"] .pad.s-B, .pv[data-side="B"] .pad.s-F { display: none; }
+.pv:not(.l-pads) .pad { display: none; }
+.pv .drill { fill: var(--pcb-drill); stroke: var(--pcb-drill-rim); stroke-width: .05; pointer-events: none; }
+.pv .via .ring { fill: var(--pcb-via); transition: fill .16s, opacity .2s; }
+.pv:not(.l-vias) .vias { display: none; }
+/* silkscreen: only the facing side's */
+.pv .line { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.pv .line.silk { stroke: var(--pcb-silk); }
+.pv .line.crtyd, .pv .line.fab { stroke: var(--pcb-silk); opacity: .45; stroke-dasharray: .3 .3; display: none; }
+.pv.l-lines .line.crtyd, .pv.l-lines .line.fab { display: inline; }
+.pv .court { fill: transparent; stroke: none; pointer-events: none; }
+.pv .ref, .pv .silk-t { fill: var(--pcb-silk); font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.pv:not(.l-silk) .line.silk, .pv:not(.l-silk) .silk-t { display: none; }
+.pv:not(.l-labels) .ref, .pv.lod-text .ref, .pv.lod-text .silk-t { display: none; }
+.pv[data-side="F"] .line.silk.s-B, .pv[data-side="F"] .ref.s-B, .pv[data-side="F"] .silk-t.s-B,
+.pv[data-side="B"] .line.silk.s-F, .pv[data-side="B"] .ref.s-F, .pv[data-side="B"] .silk-t.s-F { display: none; }
+/* a footprint on the far side is drawn faint, so it reads as "through the board" */
+.pv.l-lines[data-side="F"] .fp.s-B .court, .pv.l-lines[data-side="B"] .fp.s-F .court { stroke: rgba(255, 255, 255, .14); stroke-width: 1; vector-effect: non-scaling-stroke; }
+/* hit testing: pads first (DOM order), then the footprint's box */
+.pv .hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.pv .fp.not-part .hit { cursor: default; }
+.pv .pad, .pv .via, .pv .zone { cursor: pointer; pointer-events: all; }
+.pv .track { pointer-events: stroke; cursor: pointer; }
+/* hover, selection, dimming */
+.pv .fp.hov .court { stroke: var(--pcb-hover); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.pv .fp.on .ref { fill: var(--pcb-sel-text); }
+.pv .so-foot { fill: var(--pcb-sel-fill); stroke: var(--pcb-sel); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pv .fp.dim { opacity: .2; }
+/* a lit net: its copper lights up, everything else on the board steps back */
+.pv.has-net .track:not(.lit), .pv.has-net .zone:not(.lit), .pv.has-net .pad:not(.lit), .pv.has-net .via:not(.lit) .ring { opacity: var(--pcb-dim); }
+.pv .track.lit { stroke: var(--pcb-net); filter: drop-shadow(0 0 .35px var(--pcb-net-glow)) drop-shadow(0 0 .5px var(--pcb-net-glow)); }
+.pv .zone.lit { fill: var(--pcb-net); fill-opacity: .55; }
+.pv .pad.lit { fill: var(--pcb-net-pad); stroke: var(--pcb-net-glow); stroke-width: .12; }
+.pv .via.lit .ring { fill: var(--pcb-net-pad); }
+.pv-ping { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; animation: pv-ping .6s var(--ease) forwards; pointer-events: none; }
+@keyframes pv-ping { to { r: 3; opacity: 0; } }
+/* the first paint: the start screen's own language. The edge draws, the pours fade in, tracks draw net by net from
+   the centre out, footprints pop 22 ms apart, silk last. Any input removes .draw and skips to the end. */
+.pv.draw .edge { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pv-draw .42s var(--ease) forwards; }
+.pv.draw .board { animation: pv-fade .3s .12s both; }
+.pv.draw .zone { animation: pv-fade .26s .3s both; }
+.pv.draw .track { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pv-draw .36s var(--ease) var(--d, 380ms) forwards; }
+.pv.draw .fp { animation: sbd-pop .5s var(--bounce) var(--d, 420ms) both; }
+.pv.draw .via, .pv.draw .silk-g { animation: pv-fade .2s 1s both; }
+@keyframes pv-draw { to { stroke-dashoffset: 0; } }
+@keyframes pv-fade { from { opacity: 0; } }
+
+/* ---------- 2D chrome: dimensions, scale bar, side note ---------- */
+.pv-ui { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.pv-dim { position: absolute; left: 0; top: 0; font: 600 11px var(--ui); color: #0b5c8f; white-space: nowrap; text-shadow: 0 0 2px #f4f6f8, 0 0 4px #f4f6f8; transform-origin: 100% 50%; transition: opacity .2s; }
+.pv.lod-dim ~ .pv-ui .pv-dim { opacity: 0; }
+.pv-side { position: absolute; left: 0; top: 0; font: 600 11px var(--ui); color: #3d7fae; white-space: nowrap; }
+.pv-scale { position: absolute; left: 14px; bottom: 40px; display: flex; flex-direction: column; gap: 3px; }
+.pv-scale-l { font: 600 10.5px var(--ui); color: #3d7fae; }
+.pv-scale i { display: block; height: 2px; background: #3d7fae; position: relative; transition: width .25s var(--ease); }
+.pv-scale i::before, .pv-scale i::after { content: ""; position: absolute; top: -4px; width: 2px; height: 6px; background: #3d7fae; }
+.pv-scale i::before { left: 0; } .pv-scale i::after { right: 0; }
+/* Top · Bottom and Layers, in the bottom-right bar */
+.br .seg.sides button { height: 26px; padding: 0 10px; font-size: 12.5px; }
+.pop.layers { top: auto; bottom: calc(100% + 8px); right: 0; width: 250px; padding: 12px 14px; transform-origin: bottom right; }
+.pop.layers h3 { margin: 0 0 6px; font: 400 17px var(--serif); }
+.ly-row { display: flex; align-items: center; gap: 10px; height: 30px; }
+.ly-sw { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--line2); flex: none; }
+.ly-l { flex: 1; font: 600 12.5px var(--ui); color: var(--ink2); }
+.ly-row .ib.xs[aria-pressed="true"] { background: none; color: var(--ink2); }
+.ly-row .ib.xs[aria-pressed="false"] { color: var(--ink3); opacity: .55; }
+.ly-row:has([aria-pressed="false"]) .ly-l { color: var(--ink3); }
+.pill-btn .ic { margin-right: -2px; }
+.pop.layers .ly-all { width: 100%; margin-top: 8px; height: 30px; border-color: transparent; color: var(--ink2); font-size: 12.5px; }
+
+/* ---------- loading, empty and error ---------- */
+.fv-msg { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; color: var(--ink2); padding: 20px; pointer-events: none; }
+.fv-msg b { display: block; font: 400 24px/1.25 var(--serif); color: var(--ink); max-width: 420px; }
+.fv-msg p { margin: 0; max-width: 420px; font-size: 14px; line-height: 1.45; }
+.fv-msg .fv-acts { display: flex; gap: 8px; margin-top: 6px; pointer-events: auto; }
+.fv-msg .ag-loader { display: inline-flex; font-size: 14px; color: var(--ink2); margin-top: 16px; }
+.fv-ghost { width: min(560px, 62%); height: auto; overflow: visible; }
+.fv-ghost .sbd-outline { fill: rgba(255, 255, 255, .22); stroke: rgba(40, 120, 180, .28); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: 6 5; }
+.fv-paper-sk { width: min(640px, 70%); aspect-ratio: 297 / 210; border-radius: 16px; background: linear-gradient(100deg, #fbfaf6 30%, #fffdf8 50%, #fbfaf6 70%) 0 0 / 250% 100%; box-shadow: var(--shadow); animation: g-sk 1.2s linear infinite; }
+
+/* ---------- the schematic paper ---------- */
+.schv {
+  --sch-paper: #fffdf8; --sch-edge: rgba(20, 24, 28, .06); --sch-grid: rgba(72, 152, 204, .08); --sch-grid-major: rgba(72, 152, 204, .16);
+  --sch-ink: #14181c; --sch-fill: #f3f6f9; --sch-pin: #4a545e; --sch-nc: #7c8791; --sch-wire: #3d7fae;
+  --sch-hover-fill: #e6f5ff; --sch-hover-stroke: #0b6fb3; --sch-net: #1aa3ff;
+}
+.schv .paper { fill: var(--sch-paper); stroke: var(--sch-edge); stroke-width: 1; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 2px rgba(16, 24, 32, .06)) drop-shadow(0 8px 28px rgba(16, 24, 32, .1)); }
+.schv.moving .paper { filter: none; }
+.schv .g1 { fill: none; stroke: var(--sch-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.schv .g10 { fill: none; stroke: var(--sch-grid-major); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.schv .paper-grid { pointer-events: none; }
+.schv.lod-grid .grid-1 { display: none; }
+.schv .sv-title { font-family: var(--serif); fill: var(--ink); }
+.schv .sv-sub { fill: var(--ink2); }
+.schv .body { stroke: var(--sch-ink); stroke-width: .18; stroke-linejoin: round; stroke-linecap: round; fill: none; transition: fill .15s, stroke .15s; }
+.schv .body.f-background { fill: var(--sch-fill); }
+.schv .body.f-outline { fill: var(--sch-ink); fill-opacity: .08; }
+.schv .body-t { fill: var(--sch-ink); text-anchor: middle; dominant-baseline: central; }
+.schv .pin-l { stroke: var(--sch-pin); stroke-width: .15; stroke-linecap: round; }
+.schv .pin-hit { stroke: transparent; stroke-width: 1.4; pointer-events: stroke; cursor: pointer; }
+.schv .pin-n { fill: var(--ink3); font-weight: 500; }
+.schv .pin-name { fill: var(--ink2); font-weight: 500; }
+.schv.lod-pins .pin-n, .schv.lod-pins .pin-name { display: none; }
+.schv .sym-t.reference { fill: var(--sch-ink); font-weight: 700; }
+.schv .sym-t.value { fill: var(--ink2); font-weight: 500; }
+.schv.lod-text .sym-t.value, .schv.lod-text .lbl-t, .schv.lod-text .sv-sub { display: none; }
+.schv .sym .hit { fill: transparent; pointer-events: all; cursor: pointer; }
+.schv .sym:focus { outline: none; }
+.schv .sym:focus-visible .hit { stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+.schv .sym.power .hit { cursor: default; }
+.schv .sym.hov .body { fill: var(--sch-hover-fill); stroke: var(--sch-hover-stroke); }
+.schv .sym.power.hov .body { fill: none; stroke: var(--sch-ink); }
+.schv .so-foot { fill: rgba(26, 163, 255, .07); stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.schv .wire { fill: none; stroke: var(--sch-wire); stroke-width: .25; stroke-linecap: round; stroke-linejoin: round; cursor: pointer; pointer-events: stroke; transition: stroke .16s, opacity .2s; }
+.schv .junction { fill: var(--sch-wire); }
+.schv .nc { stroke: var(--sch-nc); stroke-width: .2; fill: none; }
+.schv .lbl { cursor: pointer; }
+.schv .lbl .flag { fill: #fff; stroke: var(--line2); stroke-width: 1; vector-effect: non-scaling-stroke; transition: fill .16s, stroke .16s; }
+.schv .lbl:hover .flag { stroke: var(--accent); }
+.schv .lbl-t { fill: var(--ink); font-weight: 600; }
+.schv .lbl.label .lbl-t { fill: var(--sch-wire); }
+.schv .lbl.lit .flag { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
+.schv .lbl.lit .lbl-t, .schv .lbl.label.lit .lbl-t { fill: var(--accent-ink); }
+.schv .pin.lit .pin-l { stroke: var(--sch-net); stroke-width: .3; }
+.schv .wire.lit { stroke: var(--sch-net); stroke-width: .45; filter: drop-shadow(0 0 .6px rgba(26, 163, 255, .35)); }
+.schv.has-net .wire:not(.lit) { opacity: .35; }
+.schv.has-net .lbl:not(.lit) { opacity: .5; }
+.schv.draw .paper { animation: nb-rise .5s var(--ease) both; }
+.schv.draw .sym { animation: pv-fade .25s var(--d, 0ms) both; }
+.schv.draw .wire { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pv-draw .3s var(--ease) .45s forwards; }
+.schv.draw .lbls, .schv.draw .marks { animation: pv-fade .25s .5s both; }
+.schv .pv-ping { stroke: var(--accent); }
+
+/* ---------- the net card in the inspector ---------- */
+.in-k { font: 600 11px/1 var(--ui); letter-spacing: .07em; text-transform: uppercase; color: var(--ink3); margin-bottom: 4px; }
+.in-rows dd .chip.acc { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-bg); height: 20px; font-size: 11.5px; padding: 0 7px; cursor: pointer; }
+
+/* ---------- phones ---------- */
+@media (max-width: 768px) {
+  /* in 2D the bottom-right bar becomes a row beside the camera column, clear of the help buttons on the right */
+  body.v-plan .br { left: 50px; right: 58px; top: 10px; bottom: auto; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px; }
+  body.v-plan .br .pill-btn { padding: 0 8px; font-size: 12px; height: 30px; }
+  body.v-plan .br .seg.sides button { padding: 0 8px; }
+  body.v-plan .br > .relpos:not(.pv-only) { display: none; } /* board colours are set in 3D on a phone */
+  .pv-scale { bottom: 84px; left: 10px; }
+  body:has(.insp:not([hidden])) .pv-scale { display: none; }
+  .pop.layers { bottom: auto; top: calc(100% + 8px); transform-origin: top right; }
+  .pv-dim.h { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-host, .schv-host { animation: fv-in .18s both; }
+  .pv.draw .edge, .pv.draw .board, .pv.draw .zone, .pv.draw .track, .pv.draw .fp, .pv.draw .via, .pv.draw .silk-g,
+  .schv.draw .paper, .schv.draw .sym, .schv.draw .wire, .schv.draw .lbls, .schv.draw .marks { animation: none; stroke-dashoffset: 0; }
+  .pv-ping { animation: none; display: none; }
+}

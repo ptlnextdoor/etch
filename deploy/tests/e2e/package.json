@@ -1,0 +1,12 @@
+{
+  "name": "etch-e2e",
+  "private": true,
+  "description": "Browser tests for the Etch pages in mock mode (no backend, no KiCad): python3 deploy/serve_page.py serves deploy/etch-app",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

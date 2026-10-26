@@ -1,0 +1,16 @@
+{
+ "name": "blinky", "mode": "design", "total_s": 13.9,
+ "checks": {
+  "models": {"count": 4, "missing": 0, "bad": []},
+  "erc": {"errors": 0, "warnings": 1, "types": ["pin_not_connected"]},
+  "drc": {"violations": 0, "warnings": 0, "unconnected": 0, "parity": 0, "types": []},
+  "netlist": {"mismatches": 0, "examples": [], "pins_checked": 9},
+  "sim": {"ok": true, "simulated": true, "supply_v": 5.0, "supply_ma_avg": 6.0, "led_peak_ma_max": 6.4}
+ },
+ "benchmarks": [
+  {"check": "drc_violations", "text": "no DRC violations", "value": 0, "pass": true},
+  {"check": "D1.avg_ma", "text": "D1 draws between 2 and 10 mA", "value": 6.0, "pass": true},
+  {"check": "supply_ma_avg", "text": "supply current inside the parts' datasheet budget, 1 to 20 mA", "value": 6.0, "pass": true, "by": "code"},
+  {"check": "OLED.avg_ma", "text": "OLED under 20 mA (not measurable: this board's simulation has no such metric)", "value": null, "pass": null, "status": "not measurable"}
+ ]
+}

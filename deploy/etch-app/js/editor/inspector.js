@@ -9,7 +9,7 @@ const firstSentence = (t) => String(t || "").replace(/`([^`]+)`/g, "$1").replace
 export function createInspector(el, { board, viewer, api, actions }) {
   const what = new Map(); // ref -> line | Promise
   const key = (ref) => `etch-what:${board.id}:${ref}`;
-  let refs = [], whatT = 0;
+  let refs = [], whatT = 0, netInfo = null; // netInfo: { name, pads, vias, track_mm, pins, labels, parts } of the lit net
 
   function whatItDoes(ref, line) {
     if (what.has(ref) && typeof what.get(ref) === "string") { line.textContent = what.get(ref); line.classList.remove("wait"); return; }
@@ -24,7 +24,7 @@ export function createInspector(el, { board, viewer, api, actions }) {
         const s = firstSentence(r.answer);
         what.set(ref, s); try { localStorage.setItem(key(ref), s); } catch (e) { /* not kept */ }
         if (refs[0] === ref) { line.textContent = s; line.classList.remove("wait"); }
-      } catch (e) { if (refs[0] === ref) { line.textContent = e.message; line.classList.remove("wait"); line.classList.add("err"); } }
+      } catch (e) { if (refs[0] === ref) { line.textContent = e.message; line.classList.remove("wait"); } }
     }, 450);
   }
 
@@ -36,8 +36,34 @@ export function createInspector(el, { board, viewer, api, actions }) {
   const iconBtn = (name, label, on, f, cls = "") => h("button", { type: "button", class: "ib sm " + cls + (on ? " on" : ""), title: label, "aria-label": label, "aria-pressed": on ? "true" : "false", html: ic(name, 16), onclick: f });
   const act = (name, label, f, disabled, why) => h("button", { type: "button", class: "act lq-btn", disabled: disabled || null, title: why || label, onclick: f, html: `${ic(name, 15)}<span>${label}</span>` });
 
+  // the lit net's own card: its numbers, its parts as chips, and where to see it
+  function renderNet() {
+    const n = netInfo;
+    el.append(h("div", { class: "in-k" }, "Net"),
+      h("div", { class: "in-head" }, h("div", { class: "in-t" }, h("b", {}, n.name)),
+        h("div", { class: "in-icons" }, iconBtn("close", "Clear the net", false, () => actions.net?.(null), "x"))));
+    const rows = [];
+    if (n.pads != null) rows.push(["Pads", String(n.pads)]);
+    if (n.vias != null) rows.push(["Vias", String(n.vias)]);
+    if (n.track_mm != null) rows.push(["Track length", `${n.track_mm} mm`]);
+    if (n.pins != null) rows.push(["Pins", String(n.pins)]);
+    if (n.labels != null) rows.push(["Labels", String(n.labels)]);
+    if (rows.length) el.append(h("dl", { class: "in-rows" }, rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
+    const list = h("div", { class: "in-list" });
+    for (const r of (n.parts || []).slice(0, 18)) list.append(h("button", { type: "button", class: "chip", onclick: () => actions.select([r]) }, r));
+    if ((n.parts || []).length > 18) list.append(h("span", { class: "more" }, `+${n.parts.length - 18}`));
+    if (list.children.length) el.append(list);
+    const inSch = document.body.classList.contains("v-sch");
+    el.append(h("div", { class: "in-acts" },
+      inSch ? act("board2d", "2D", () => actions.showView?.("plan")) : act("schem", "Schematic", () => actions.showView?.("sch")),
+      act("ask", "Ask", () => { actions.askText?.(`What is the ${n.name} net for on this board?`); }),
+      act("close", "Clear", () => actions.net?.(null))));
+    el.querySelector(".in-acts").style.gridTemplateColumns = "repeat(3, 1fr)";
+    actions.liquid?.(el);
+  }
   function render() {
     el.textContent = "";
+    if (!refs.length && netInfo) { el.hidden = false; renderNet(); return; }
     if (!refs.length) { el.hidden = true; return; }
     el.hidden = false;
     const hidden = viewer.hidden, iso = viewer.isolated;
@@ -58,7 +84,10 @@ export function createInspector(el, { board, viewer, api, actions }) {
       el.append(line);
       whatItDoes(refs[0], line);
       const rows = [["Footprint", String(p.footprint || "—").split(":").pop()], ["Side", p.side || "—"], ["Position", pos(p)], ["Rotation", p.rot != null ? `${Math.round(p.rot * 10) / 10}°` : "—"]];
-      el.append(h("dl", { class: "in-rows" }, rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", { title: k === "Footprint" ? p.footprint || "" : null }, v)])));
+      const dl = h("dl", { class: "in-rows" }, rows.flatMap(([k, v]) => [h("dt", {}, k), h("dd", { title: k === "Footprint" ? p.footprint || "" : null }, v)]));
+      // a lit net shows on the part's card too; the chip opens the net's own card
+      if (netInfo) dl.append(h("dt", {}, "Net"), h("dd", {}, h("button", { type: "button", class: "chip acc", onclick: () => actions.clear() }, netInfo.name)));
+      el.append(dl);
     } else {
       const list = h("div", { class: "in-list" });
       for (const r of refs.slice(0, 18)) list.append(h("button", { type: "button", class: "chip", onclick: () => actions.select([r]) }, r));
@@ -74,6 +103,7 @@ export function createInspector(el, { board, viewer, api, actions }) {
   }
   return {
     set(list) { refs = list || []; render(); },
+    setNet(info) { netInfo = info || null; render(); },
     render,
     get refs() { return refs; },
   };

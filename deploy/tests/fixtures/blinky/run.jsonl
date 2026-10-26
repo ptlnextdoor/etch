@@ -1,0 +1,4 @@
+{"agent": "lead", "type": "start", "ask": "a USB-C night light with one red LED", "run": "live-1700000000000"}
+{"agent": "assembly", "type": "iteration", "iteration": 1, "phase": "place-route-check"}
+{"agent": "assembly", "type": "gate", "iteration": 1, "gate": "DRC passed", "ok": true, "value": 0}
+{"agent": "lead", "type": "done", "ok": true, "run": "live-1700000000000"}

@@ -1,0 +1,87 @@
+{
+ "ok": true,
+ "level": "hobbyist",
+ "questions": [
+  {
+   "id": "power",
+   "question": "How should it get power?",
+   "why": "Every board needs a supply; the right one decides the connector, the regulator and the size.",
+   "options": [
+    {
+     "label": "USB-C",
+     "detail": "5 V from any phone charger or laptop",
+     "add": "powered over USB-C",
+     "recommended": true
+    },
+    {
+     "label": "A coin cell",
+     "detail": "Tiny; good for a blinker or a sensor that sleeps",
+     "add": "powered by a CR2032 coin cell",
+     "recommended": false
+    },
+    {
+     "label": "A rechargeable LiPo",
+     "detail": "Portable, charges over USB",
+     "add": "powered by a LiPo battery with USB charging",
+     "recommended": false
+    },
+    {
+     "label": "Whatever fits best",
+     "detail": "Etch picks",
+     "add": "",
+     "recommended": false
+    }
+   ]
+  },
+  {
+   "id": "size",
+   "question": "How big can it be?",
+   "why": "A tighter board costs less and fits more places, a roomier one is easier to solder and label.",
+   "options": [
+    {
+     "label": "As small as possible",
+     "detail": "Parts packed tight, both sides if it helps",
+     "add": "keep the board as small as possible",
+     "recommended": true
+    },
+    {
+     "label": "Comfortable",
+     "detail": "Room for labels and fingers",
+     "add": "leave room between parts for labels",
+     "recommended": false
+    },
+    {
+     "label": "Doesn't matter",
+     "detail": "",
+     "add": "",
+     "recommended": false
+    }
+   ]
+  },
+  {
+   "id": "debug",
+   "question": "Anything on the board to help you debug it?",
+   "why": "A status LED and test points cost nothing on a prototype and save an evening.",
+   "options": [
+    {
+     "label": "A status LED",
+     "detail": "One LED on a free pin",
+     "add": "with a status LED",
+     "recommended": true
+    },
+    {
+     "label": "Test points",
+     "detail": "On the main nets",
+     "add": "with test points on the main nets",
+     "recommended": false
+    },
+    {
+     "label": "Nothing extra",
+     "detail": "",
+     "add": "",
+     "recommended": false
+    }
+   ]
+  }
+ ]
+}

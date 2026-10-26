@@ -22,6 +22,10 @@
 <td><b>Export real files</b><br>KiCad project, Gerbers, drill and BOM, checked again on export. Or the 3D model as GLB.<br><img src="docs/media/export.gif" alt="Exporting the KiCad project and Gerbers"></td>
 </tr>
 <tr>
+<td><b>See it flat, and as a schematic</b><br>The same board as KiCad plots it (copper, pads, silk, top or bottom) and the schematic Etch drew, with every part and net clickable across the 3D, 2D and schematic views.</td>
+<td><b>Make it</b><br>The board's numbers, every check it passed, a rough bare-board estimate, and the fab files (Gerbers, drill, BOM, KiCad project) in one sheet. Before a build, Etch asks one to three quick questions with its own pick marked.</td>
+</tr>
+<tr>
 <td colspan="2"><b>Explore 135 open-source boards</b><br>Real KiCad projects from GitHub, prerendered with every original 3D part model, each credited to its author and licence. Your own builds land in My boards.<br><img src="docs/media/library.gif" width="760" alt="Browsing the board library"></td>
 </tr>
 </table>

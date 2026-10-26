@@ -8,15 +8,28 @@
 // Either way the panel then melts down into the agent dock's pill (a goo layer: the panel blob shrinks onto the pill
 // while droplets bud off and drop into it) and is gone.
 //
-//   const hero = createNewBoardHero(stageEl, { onSubmit, onMic, onPick, boardHref(b), target: () => DOMRect|null,
-//     initial: "scratch" | "library", recent: ["gh:…", …] });
+// Above the composer's right edge, mirroring the eyes on its left, a small liquid radio group says how much Etch should
+// ask before it builds (Beginner · Hobbyist · Expert, clarify.js), with a hint of what that means.
+//
+//   const hero = createNewBoardHero(stageEl, { onSubmit, onSending(text), onMic, onPick, boardHref(b),
+//     target: () => DOMRect|null, initial: "scratch" | "library", recent: ["gh:…", …],
+//     level: "hobbyist", levels: ["beginner", "hobbyist", "expert"], onLevel(level) });
+//   onSending fires the moment the person presses Build (before the melt); onSubmit once the panel is in the dock.
+//   No levels: no picker.
 //   hero.collapse() -> Promise   (melt into the dock without sending, e.g. when the user talks to the dock instead)
 //   hero.open                    (still showing)
+//   hero.level                   (the picked experience level)
 import { createEyes } from "../ui/eyes.js";
-import { gooLayer, spawnBlob, squish, wobble } from "../ui/goo.js";
+import { gooLayer, spawnBlob, squish, wobble, liquidTabs } from "../ui/goo.js";
 import { spring, reducedMotion } from "../ui/spring.js";
 import { WORLD, boardFiles, cachedFetch, keyBackdrop, prefetchBoard, icon, fmtStars } from "../common.js";
 
+// how much Etch asks before it builds (views.py clarify() caps: beginner 2, hobbyist 3, expert 1)
+const XP = {
+  beginner: ["Beginner", "Up to 2 quick questions"],
+  hobbyist: ["Hobbyist", "Up to 3 quick questions"],
+  expert: ["Expert", "1 question at most"],
+};
 // example prompts, each with a tiny glyph of the kind of board it makes
 export const EXAMPLES = [
   ["led", "A board that blinks one red LED from a coin cell"],
@@ -50,7 +63,7 @@ const SPARKLE = `<svg class="nb-spark" viewBox="0 0 24 24" aria-hidden="true">${
 // a little stack of white cards, each with a board on it
 const STACK = '<span class="nb-stack" aria-hidden="true">' + [0, 1, 2].map((i) => `<i class="c c${i}"><b></b><s></s><s class="w"></s></i>`).join("") + "</span>";
 
-export function createNewBoardHero(host, { onSubmit, onMic, onPick, boardHref = () => "#", target = () => null, initial = "scratch", recent = [], mine = [], mineHref = () => "#", max = 400 } = {}) {
+export function createNewBoardHero(host, { onSubmit, onSending, onMic, onPick, boardHref = () => "#", target = () => null, initial = "scratch", recent = [], mine = [], mineHref = () => "#", max = 400, level = "hobbyist", levels = [], onLevel } = {}) {
   let gone = false, done = null, typeT = 0, mode = initial === "library" ? "library" : "scratch";
   const root = el("div", "nb", { role: "dialog", "aria-modal": "false", "aria-labelledby": "nbT" });
   const veil = el("div", "nb-veil");
@@ -78,6 +91,25 @@ export function createNewBoardHero(host, { onSubmit, onMic, onPick, boardHref = 
   const send = el("button", "nb-send lq-btn", { type: "submit", "aria-label": "Build this board", title: "Build it (Enter)" });
   send.innerHTML = svg("send");
   const form = el("form", "nb-comp", {}, eyesHost, input, el("div", "nb-acts", {}, mic, send));
+  // ---- experience: a liquid radio group above the composer's right edge, its hint to the left ----
+  const xps = (levels || []).map((v) => (typeof v === "string" ? { value: v, label: XP[v]?.[0] || v.replace(/^./, (c) => c.toUpperCase()), hint: XP[v]?.[1] || "" } : v)).filter((x) => x && x.value);
+  let xp = xps.some((x) => x.value === level) ? level : xps[0]?.value || level, xpTabs = null, hint = null;
+  if (xps.length) {
+    hint = el("span", "nb-xp-h", { id: "nbXpH" }, el("span", "in", {}, xps.find((x) => x.value === xp)?.hint || ""));
+    const group = el("div", "nb-xp-g", { "aria-label": "Your experience", "aria-describedby": "nbXpH" },
+      ...xps.map((x) => el("button", "", { type: "button", "data-value": x.value, title: x.hint || null }, x.label)));
+    form.append(el("div", "nb-xp", {}, hint, group));
+    form.classList.add("has-xp");
+    xpTabs = liquidTabs(group, { value: xp, role: "radio", onChange: (v) => {
+      xp = v;
+      // the hint crossfades: the new line fades in over the old one, which fades out and goes
+      const old = hint.lastElementChild, next = el("span", "", {}, xps.find((x) => x.value === v)?.hint || "");
+      hint.append(next); void next.offsetWidth; next.classList.add("in"); old?.classList.remove("in");
+      setTimeout(() => old?.remove(), 220);
+      eyes.react("nod");
+      onLevel && onLevel(v);
+    } });
+  }
   const starts = el("div", "nb-strip nb-starts", { role: "list" });
   for (const [k, x] of EXAMPLES) {
     const c = el("button", "nb-pc lq-btn", { type: "button", role: "listitem", "aria-label": `Use this example: ${x}` });
@@ -220,6 +252,7 @@ export function createNewBoardHero(host, { onSubmit, onMic, onPick, boardHref = 
     if (gone) return;
     if (!t) { eyes.react("shake"); input.focus(); return; }
     eyes.setState("heard");
+    if (onSending) { try { onSending(t); } catch (er) { /* only an early start: onSubmit still runs */ } }
     collapse().then(() => onSubmit && onSubmit(t));
   });
   mic.addEventListener("click", () => {
@@ -346,6 +379,7 @@ export function createNewBoardHero(host, { onSubmit, onMic, onPick, boardHref = 
   }
   function teardown() {
     ro.disconnect(); removeEventListener("resize", place);
+    xpTabs?.destroy();
     clearTimeout(typeT);
     for (const e of [eyes, miniEyes]) { try { e.destroy(); } catch (er) { /* already gone */ } }
     root.remove();
@@ -356,6 +390,7 @@ export function createNewBoardHero(host, { onSubmit, onMic, onPick, boardHref = 
     get open() { return !gone; },
     get mode() { return mode; },
     get value() { return input.value; },
+    get level() { return xp; },
     show: (m) => show(m, { focus: true }),
     focus() { (mode === "scratch" ? input : q).focus(); },
     collapse,
