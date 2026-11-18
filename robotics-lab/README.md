@@ -17,3 +17,11 @@ The original serves its un-bundled source, so `index.html`, `css/`, `js/` and `v
 ## Verification
 
 `compare/` holds original (`orig-*`) and recreation (`clone-*`) screenshots of `#uno`, `#esp32` and the open workbench (`*-lab-*`) at 1440 and 390 px width. Opening all eight boards and the lab gives zero 404s and zero console errors. The files served by the original were copied byte for byte, so the pages render the same.
+
+## Super app (phase 2, step 1)
+
+`pcb/` is Etch's board editor (`deploy/etch-app`, copied without the 155 MB `world/boards` library). The new **PCB** nav link opens `pcb/board.html?new=1`: describe a board and Etch's backend picks parts, routes and checks it, shown in 3D. It needs a reachable Etch backend (`pcb/config.json` points at the live one). The Explore library is not bundled because of Vercel's size limit.
+
+## Deploy
+
+    cd robotics-lab && npx vercel deploy --prod

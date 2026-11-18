@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etch</title>
+<meta name="theme-color" content="#ffffff">
+<meta http-equiv="refresh" content="0; url=explore.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<script>
+  // Etch's homepage is Explore. On Vercel "/" is rewritten to it (vercel.json); this covers python's http.server.
+  // explore.html works on both (Vercel's cleanUrls redirects it to /explore).
+  location.replace((/\.html$/.test(location.pathname) || location.port ? "explore.html" : "explore") + location.search + location.hash);
+</script>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f8fb;font:15px/1.4 system-ui,sans-serif;color:#14181c}a{color:#0b6fb3}</style>
+</head>
+<body>
+<noscript><p><a href="explore.html">Open Etch's board library</a></p></noscript>
+</body>
+</html>
