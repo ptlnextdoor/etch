@@ -1,0 +1,7 @@
+{
+  "name": "robotics-lab",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Faithful recreation of https://robotics-lab-app.vercel.app/ (phase 1). Static ES modules, three.js r164 vendored.",
+  "scripts": { "start": "node server.mjs" }
+}

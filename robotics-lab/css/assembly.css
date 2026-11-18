@@ -1,0 +1,163 @@
+/* Assembly mode overlay (js/core/assembly.js). Everything is scoped under .asm-root, which fills viewer.el. */
+.asm-root {
+  --asm-paper: #fbf8f1; --asm-ink: #1d1b16; --asm-line: rgba(29, 27, 22, .14); --asm-soft: rgba(29, 27, 22, .58);
+  --asm-accent: #d9572a; --asm-ok: #2f7a55; --asm-r: 0px; --asm-b: 0px;
+  --asm-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --asm-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --asm-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  position: absolute; inset: 0; z-index: 20; pointer-events: none; overflow: hidden;
+  font: 13px/1.45 var(--asm-sans); color: var(--asm-ink); -webkit-font-smoothing: antialiased; text-align: left;
+}
+.asm-root *, .asm-root *::before, .asm-root *::after { box-sizing: border-box; }
+.asm-root [hidden] { display: none !important; }
+.asm-eyebrow { display: block; font: 600 9.5px/1.2 var(--asm-mono); letter-spacing: .13em; text-transform: uppercase; color: var(--asm-soft); }
+
+/* ───────── side panel ───────── */
+.asm-panel {
+  position: absolute; top: 16px; right: 16px; bottom: 16px; width: 300px; pointer-events: auto;
+  display: flex; flex-direction: column; min-height: 0;
+  background: var(--asm-paper); border: 1px solid var(--asm-line); border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 18px 40px -18px rgba(70, 48, 14, .35), 0 2px 6px -2px rgba(70, 48, 14, .12);
+  overflow: hidden;
+}
+.asm-head { display: flex; align-items: flex-start; gap: 10px; padding: 16px 16px 12px; }
+.asm-head-t { flex: 1; min-width: 0; }
+.asm-title { margin: 5px 0 0; font: 600 21px/1.15 var(--asm-serif); letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asm-x {
+  flex: none; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  color: var(--asm-ink); background: transparent; border: 1px solid var(--asm-line); border-radius: 50%;
+  transition: background .15s, border-color .15s;
+}
+.asm-x:hover { background: rgba(29, 27, 22, .06); border-color: rgba(29, 27, 22, .3); }
+
+.asm-prog { padding: 0 16px 12px; }
+.asm-bar { position: relative; height: 6px; border-radius: 3px; background: rgba(29, 27, 22, .09); overflow: hidden; }
+.asm-bar b, .asm-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px; transition: width .35s cubic-bezier(.2, .7, .2, 1); }
+.asm-bar b { background: rgba(217, 87, 42, .32); }
+.asm-bar i { background: var(--asm-accent); }
+.asm-prog-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; font: 500 11px/1 var(--asm-mono); letter-spacing: .04em; color: var(--asm-soft); }
+.asm-count b { font-weight: 700; color: var(--asm-ink); }
+.asm-timer { font-variant-numeric: tabular-nums; color: var(--asm-ink); }
+
+.asm-step { padding: 12px 16px 13px; border-top: 1px solid var(--asm-line); background: rgba(217, 87, 42, .055); }
+.asm-step-n { color: var(--asm-accent); }
+.asm-instr { margin: 5px 0 0; font: 400 16px/1.3 var(--asm-serif); min-height: 2.6em; }
+.asm-instr strong { font-weight: 700; }
+
+.asm-about { padding: 11px 16px 12px; border-top: 1px solid var(--asm-line); }
+.asm-about h3 { margin: 5px 0 3px; font: 600 14.5px/1.25 var(--asm-serif); }
+.asm-about p { margin: 0; font-size: 12.5px; line-height: 1.45; color: rgba(29, 27, 22, .78); }
+
+.asm-list-wrap { flex: 1; min-height: 64px; display: flex; flex-direction: column; border-top: 1px solid var(--asm-line); }
+.asm-list-h { padding: 11px 16px 6px; }
+.asm-list { flex: 1; min-height: 0; margin: 0; padding: 0 8px 8px; list-style: none; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(29, 27, 22, .25) transparent; position: relative; }
+.asm-row {
+  display: flex; align-items: center; gap: 9px; padding: 5px 8px; border-radius: 8px; cursor: pointer; user-select: none;
+  outline: none; transition: background .12s;
+}
+.asm-row:hover, .asm-row.is-hover, .asm-row:focus-visible { background: rgba(29, 27, 22, .055); }
+.asm-row:focus-visible { box-shadow: 0 0 0 1.5px var(--asm-accent) inset; }
+.asm-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(29, 27, 22, .34); background: transparent; transition: background .2s, border-color .2s, box-shadow .2s; }
+.asm-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asm-st { flex: none; font: 600 9px/1 var(--asm-mono); letter-spacing: .1em; text-transform: uppercase; color: rgba(29, 27, 22, .42); }
+.asm-row.is-next { background: rgba(217, 87, 42, .09); }
+.asm-row.is-next .asm-dot { border-color: var(--asm-accent); box-shadow: 0 0 0 3px rgba(217, 87, 42, .16); }
+.asm-row.is-next .asm-st { color: var(--asm-accent); }
+.asm-row.is-carried { background: rgba(217, 87, 42, .15); }
+.asm-row.is-carried .asm-name { font-weight: 600; }
+.asm-row.is-carried .asm-dot { border-color: var(--asm-accent); background: repeating-linear-gradient(135deg, var(--asm-accent) 0 2px, transparent 2px 4px); }
+.asm-row.is-carried .asm-st, .asm-row.is-tacked .asm-st { color: var(--asm-accent); }
+.asm-row.is-tacked .asm-dot { border-color: var(--asm-accent); background: var(--asm-accent); box-shadow: 0 0 0 3px rgba(217, 87, 42, .18); }
+.asm-row.is-soldered .asm-dot {
+  border-color: var(--asm-ok);
+  background: var(--asm-ok) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.4 5.2l1.8 1.8 3.4-3.8' fill='none' stroke='%23fff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 9px no-repeat;
+}
+.asm-row.is-soldered .asm-name { color: rgba(29, 27, 22, .55); }
+.asm-row.is-soldered .asm-st { color: var(--asm-ok); }
+
+.asm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; padding: 12px 16px 10px; border-top: 1px solid var(--asm-line); }
+.asm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 6px 10px; cursor: pointer;
+  font: 600 12px/1.1 var(--asm-sans); color: var(--asm-ink); background: #fffdf8; border: 1px solid var(--asm-line); border-radius: 9px;
+  transition: background .15s, border-color .15s, transform .08s; white-space: nowrap;
+}
+.asm-btn:hover { border-color: rgba(29, 27, 22, .34); background: #fff; }
+.asm-btn:active { transform: translateY(1px); }
+.asm-btn:focus-visible { outline: 2px solid var(--asm-accent); outline-offset: 1px; }
+.asm-btn:disabled { opacity: .45; cursor: default; }
+.asm-btn-main { color: #fff; background: var(--asm-accent); border-color: var(--asm-accent); }
+.asm-btn-main:hover { background: #c64c22; border-color: #c64c22; }
+.asm-toggle { grid-column: 1 / -1; justify-content: flex-start; }
+.asm-toggle em { font-style: normal; margin-left: auto; font: 600 9.5px/1 var(--asm-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--asm-soft); }
+.asm-switch { position: relative; flex: none; width: 26px; height: 15px; border-radius: 8px; background: rgba(29, 27, 22, .2); transition: background .18s; }
+.asm-switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: transform .18s; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.asm-toggle[aria-pressed="true"] .asm-switch { background: var(--asm-accent); }
+.asm-toggle[aria-pressed="true"] .asm-switch::after { transform: translateX(11px); }
+.asm-toggle[aria-pressed="true"] em { color: var(--asm-accent); }
+.asm-note { margin: 0; padding: 0 16px 13px; font-size: 11px; line-height: 1.35; color: var(--asm-soft); }
+
+/* ───────── floating bits over the canvas ───────── */
+.asm-toast {
+  position: absolute; left: calc((100% - var(--asm-r)) / 2); top: 18px; max-width: min(460px, calc(100% - var(--asm-r) - 32px));
+  transform: translate(-50%, -10px); opacity: 0; transition: opacity .2s, transform .25s cubic-bezier(.2, .8, .2, 1);
+  padding: 9px 15px; border-radius: 999px; background: var(--asm-ink); color: var(--asm-paper); font-size: 13px; line-height: 1.3; text-align: center;
+  box-shadow: 0 10px 26px -10px rgba(30, 20, 5, .55);
+}
+.asm-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+.asm-toast.is-warn { box-shadow: 0 0 0 2px var(--asm-accent), 0 10px 26px -10px rgba(30, 20, 5, .55); }
+.asm-tip {
+  position: absolute; left: 0; top: 0; max-width: 240px; padding: 4px 9px; border-radius: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--asm-ink); color: var(--asm-paper); font-size: 12px; opacity: 0; transition: opacity .12s; will-change: transform;
+}
+.asm-tip.is-on { opacity: 1; }
+.asm-ring { position: absolute; left: -28px; top: -28px; width: 56px; height: 56px; opacity: 0; transition: opacity .12s; will-change: transform; filter: drop-shadow(0 3px 6px rgba(40, 25, 5, .3)); }
+.asm-ring.is-on { opacity: 1; }
+.asm-ring svg { display: block; }
+.asm-ring-bg { fill: rgba(251, 248, 241, .9); stroke: rgba(29, 27, 22, .14); stroke-width: 5; }
+.asm-ring-fg { fill: none; stroke: var(--asm-accent); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 138.23; stroke-dashoffset: 138.23; }
+
+.asm-done {
+  position: absolute; left: calc((100% - var(--asm-r)) / 2); bottom: calc(var(--asm-b) + 34px); width: min(400px, calc(100% - var(--asm-r) - 32px));
+  transform: translateX(-50%); pointer-events: auto; padding: 18px 20px 16px; text-align: center;
+  background: var(--asm-paper); border: 1px solid var(--asm-line); border-radius: 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 24px 50px -20px rgba(70, 48, 14, .45);
+  animation: asm-rise .5s cubic-bezier(.2, .8, .2, 1) both;
+}
+.asm-done .asm-eyebrow { color: var(--asm-ok); }
+.asm-done h3 { margin: 6px 0 4px; font: 600 24px/1.15 var(--asm-serif); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.asm-done p { margin: 0 0 14px; font-size: 12.5px; color: rgba(29, 27, 22, .72); }
+.asm-done-btns { display: flex; gap: 8px; justify-content: center; }
+.asm-done-btns .asm-btn { min-width: 112px; }
+@keyframes asm-rise { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ───────── bottom sheet (container narrower than 820 px) ───────── */
+.asm-compact .asm-panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 48%; border-radius: 14px; }
+.asm-compact .asm-head { padding: 10px 12px 6px; align-items: center; }
+.asm-compact .asm-title { font-size: 16px; margin-top: 2px; }
+.asm-compact .asm-prog { padding: 0 12px 8px; }
+.asm-compact .asm-step { padding: 8px 12px 9px; }
+.asm-compact .asm-instr { font-size: 14.5px; min-height: 0; }
+.asm-compact .asm-about { padding: 7px 12px 8px; }
+.asm-compact .asm-about .asm-eyebrow { display: none; }
+.asm-compact .asm-about h3 { display: none; }
+.asm-compact .asm-about p { font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.asm-compact .asm-list-wrap { flex: none; min-height: 0; }
+.asm-compact .asm-list-h { display: none; }
+.asm-compact .asm-list { display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.asm-compact .asm-list::-webkit-scrollbar { display: none; }
+.asm-compact .asm-row { flex: none; max-width: 190px; padding: 5px 10px 5px 8px; border: 1px solid var(--asm-line); border-radius: 999px; }
+.asm-compact .asm-st { display: none; }
+.asm-compact .asm-actions { display: flex; gap: 6px; padding: 8px 12px 10px; overflow-x: auto; scrollbar-width: none; }
+.asm-compact .asm-actions::-webkit-scrollbar { display: none; }
+.asm-compact .asm-btn { flex: none; }
+.asm-compact .asm-toggle { grid-column: auto; }
+.asm-compact .asm-toggle em { margin-left: 4px; }
+.asm-compact .asm-note { display: none; }
+.asm-compact .asm-toast { top: 10px; }
+.asm-compact .asm-done { bottom: calc(var(--asm-b) + 14px); }
+/* finished on a phone: the sheet shrinks to its header so the assembled board is in full view */
+.asm-compact.asm-finished .asm-about, .asm-compact.asm-finished .asm-list-wrap, .asm-compact.asm-finished .asm-actions { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .asm-bar b, .asm-bar i, .asm-toast, .asm-done { transition: none; animation: none; }
+}

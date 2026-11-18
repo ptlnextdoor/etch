@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robotics Lab — eight robot-builder boards in interactive 3D</title>
+<meta name="description" content="Eight boards every robot builder meets — in 3D you can take apart, wire up and run. Spin them on the bench, learn every part, assemble them and build circuits on the workbench.">
+<meta name="theme-color" content="#efe7d8">
+<link rel="canonical" href="https://robotics-lab-app.vercel.app/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Robotics Lab">
+<meta property="og:url" content="https://robotics-lab-app.vercel.app/">
+<meta property="og:title" content="Robotics Lab — eight robot-builder boards in interactive 3D">
+<meta property="og:description" content="Eight boards every robot builder meets — in 3D you can take apart, wire up and run.">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v4.5h-4.5"/></symbol>
+    <symbol id="i-labels" viewBox="0 0 24 24"><path d="M4 6.5h9.2l6.8 5.5-6.8 5.5H4z"/><circle cx="8.2" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
+    <symbol id="i-assemble" viewBox="0 0 24 24"><rect x="7" y="3.2" width="10" height="6.6" rx="1.4"/><path d="M12 12.4v4.4M9.7 14.7l2.3 2.3 2.3-2.3"/><path d="M3.5 20.6h17"/><path d="M7.5 20.6v-1.8M16.5 20.6v-1.8"/></symbol>
+    <symbol id="i-lab" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v5.3l-4.9 8.8a1.9 1.9 0 0 0 1.7 2.9h9.4a1.9 1.9 0 0 0 1.7-2.9l-4.9-8.8V3.5"/><path d="M8.1 15h7.8"/></symbol>
+    <symbol id="i-wire" viewBox="0 0 24 24"><circle cx="5" cy="6.5" r="2"/><circle cx="19" cy="17.5" r="2"/><path d="M7 6.5h5.5a3.5 3.5 0 0 1 3.5 3.5v0a3.5 3.5 0 0 1-3.5 3.5h-1a3.5 3.5 0 0 0-3.5 3.5v.5H17"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5L8 5.5z"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V4M6 4.5h11l-2.2 4 2.2 4H6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4L12 4z"/><path d="M12 10v4.5M12 17.1v.4"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9.3 17.5h5.4M10.3 20.5h3.4"/><path d="M12 3.5a6 6 0 0 0-3.6 10.8c.5.4.8 1 .9 1.7h5.4c.1-.7.4-1.3.9-1.7A6 6 0 0 0 12 3.5z"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M6 4l12 7.2-5.2 1.4L10.4 18 6 4z"/></symbol>
+    <symbol id="i-board" viewBox="0 0 64 44"><rect x="6" y="8" width="52" height="28" rx="3"/><rect x="26" y="15" width="14" height="14" rx="1.5"/><path d="M12 13h8M12 31h8M46 13h6M46 31h6M12 22h6"/><circle cx="50" cy="22" r="2"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip" href="#lesson">Skip to the lesson</a>
+
+<header class="top" id="top">
+  <a class="brand" href="#sec-stage" data-scroll aria-label="Robotics Lab — back to top">
+    <svg class="ico brand__mark" aria-hidden="true"><use href="#i-chip"/></svg>
+    <span class="brand__name">Robotics Lab</span>
+  </a>
+  <nav class="nav" aria-label="Sections">
+    <a href="#sec-stage" data-scroll data-spy="sec-stage" class="nav__boards">Boards</a>
+    <a href="#lab" data-scroll data-spy="lab" aria-label="Workbench"><span class="nav__long">Workbench</span><span class="nav__short" aria-hidden="true">Bench</span></a>
+    <a href="#lesson" data-scroll data-spy="lesson">Lesson</a>
+    <a href="#quiz" data-scroll data-spy="quiz">Quiz</a>
+    <a href="#compare" data-scroll data-spy="compare">Compare</a>
+    <a href="pcb/board.html?new=1">PCB</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ───────────── Stage: one board on the bench, full-bleed 3D ───────────── -->
+  <section class="stage" id="sec-stage" aria-label="Interactive 3D model of the board">
+    <div class="stage__view" id="view">
+      <div class="viewer" id="viewer"></div>
+      <div class="stage__scrim" aria-hidden="true"></div>
+      <div class="markers" id="markers" hidden></div>
+      <div class="tip" id="tip" role="tooltip" aria-hidden="true"></div>
+      <div class="loader" id="loader" role="status" aria-live="polite">
+        <span class="loader__ring" aria-hidden="true"></span>
+        <span class="loader__text">Building the board…</span>
+      </div>
+      <p class="toast" id="zoomhint" aria-hidden="true">To zoom, scroll while holding <kbd>Ctrl</kbd> or pinch on the trackpad</p>
+      <p class="toast toast--low" id="toast" role="status" aria-live="polite"></p>
+      <p class="scene__error" id="scene-error" hidden></p>
+    </div>
+
+    <!-- left column: title block, and under it one of: labels legend / part card / quiz -->
+    <div class="info" id="info">
+      <div class="head frost" id="head">
+        <p class="head__meta"><span class="kicker" id="head-meta">&nbsp;</span><span class="head__count" id="head-count" aria-hidden="true"></span></p>
+        <h1 class="head__name" id="head-name">Robotics Lab</h1>
+        <p class="head__tagline" id="head-tagline">Eight boards every robot builder meets</p>
+        <div class="head__actions">
+          <button type="button" class="btn btn--sm" id="btn-lab" data-action="open-lab">
+            <svg class="ico" aria-hidden="true"><use href="#i-lab"/></svg><span>Open on the workbench</span>
+          </button>
+          <p class="level" id="head-level" title="Difficulty level" hidden></p>
+        </div>
+        <p class="head__intro">Eight boards every robot builder meets — in 3D you can take apart, wire up and run.</p>
+      </div>
+      <aside class="sub frost legend" id="legend" aria-label="Part labels" hidden></aside>
+      <aside class="sub frost partcard" id="partcard" aria-label="Board part" tabindex="-1" hidden></aside>
+      <div class="sub frost quiz" id="quizpanel" role="group" aria-label="Find the part quiz" tabindex="-1" hidden></div>
+    </div>
+
+    <!-- bottom dock: view toolbar and the board rail -->
+    <div class="dock" id="dock">
+      <div class="toolbar frost" id="toolbar" role="toolbar" aria-label="View controls">
+        <div class="seg" role="group" aria-label="Camera view">
+          <button type="button" class="seg__btn" data-view="iso" aria-pressed="true" title="Three-quarter view">3/4</button>
+          <button type="button" class="seg__btn" data-view="top" aria-pressed="false">Top</button>
+          <button type="button" class="seg__btn" data-view="bottom" aria-pressed="false">Bottom</button>
+          <button type="button" class="seg__btn" data-view="front" aria-pressed="false">Front</button>
+        </div>
+        <span class="toolbar__sep" aria-hidden="true"></span>
+        <div class="toolbar__group">
+          <button type="button" class="tgl" id="btn-rotate" data-action="toggle-rotate" aria-pressed="false">
+            <svg class="ico" aria-hidden="true"><use href="#i-rotate"/></svg><span>Rotate</span>
+          </button>
+          <button type="button" class="tgl" id="btn-labels" data-action="toggle-labels" aria-pressed="false">
+            <svg class="ico" aria-hidden="true"><use href="#i-labels"/></svg><span>Labels</span>
+          </button>
+        </div>
+        <span class="toolbar__sep" aria-hidden="true"></span>
+        <div class="toolbar__cta">
+          <button type="button" class="btn btn--sm btn--ghost" id="btn-quiz" data-action="quiz-toggle" aria-pressed="false">
+            <svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span>Find the part</span>
+          </button>
+          <button type="button" class="btn btn--sm btn--accent" id="btn-asm" data-action="asm-toggle" aria-pressed="false">
+            <svg class="ico" aria-hidden="true"><use href="#i-assemble"/></svg><span id="btn-asm-label">Assemble it</span>
+          </button>
+        </div>
+      </div>
+
+      <nav class="rail frost" id="rail" aria-label="Choose a board">
+        <ul class="rail__list" id="rail-list"></ul>
+      </nav>
+    </div>
+  </section>
+
+  <!-- ───────────── Workbench: the 3D lab bench (mounted by js/lab/lab.js into #lab-root) ───────────── -->
+  <section class="section labsec" id="lab" aria-labelledby="lab-title">
+    <div class="wrap wrap--wide">
+      <div class="sec-top">
+        <header class="sec-head">
+          <p class="kicker"><span class="kicker__n">01</span>Workbench</p>
+          <h2 id="lab-title">Wire it up on the workbench</h2>
+          <p class="lead">Put a board on the bench, add sensors, motors and displays, run jumper wires from pin to pin and press Run. Guided missions walk you through real circuits; Free build lets you wire anything.</p>
+        </header>
+        <ul class="feats" aria-label="What you can do on the workbench">
+          <li><svg class="ico" aria-hidden="true"><use href="#i-flag"/></svg><div><h3>Missions</h3><p>Step-by-step builds — blink an LED, read a sensor, drive a motor.</p></div></li>
+          <li><svg class="ico" aria-hidden="true"><use href="#i-wire"/></svg><div><h3>Real wiring</h3><p>Click a pin, click another: the bench checks every connection before power-up.</p></div></li>
+          <li><svg class="ico" aria-hidden="true"><use href="#i-expand"/></svg><div><h3>Room to work</h3><p>Press <b>Full screen</b> in the workbench toolbar to give the bench the whole display.</p></div></li>
+        </ul>
+      </div>
+      <div class="lab__frame">
+        <div id="lab-root"></div>
+        <p class="lab__note" id="lab-note" hidden>The workbench is still being set up. The boards, lessons and quiz are ready in the meantime.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Lesson ───────────── -->
+  <section class="section lesson" id="lesson" aria-labelledby="lesson-title">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="kicker"><span class="kicker__n">02</span>Lesson</p>
+        <h2 id="lesson-title">Meet the board</h2>
+      </header>
+      <div id="lesson-body" class="lesson__body">
+        <p class="muted">Loading the lesson…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Practice: quiz + assembly ───────────── -->
+  <section class="section practice" id="quiz" aria-labelledby="quiz-title">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="kicker"><span class="kicker__n">03</span>Quiz &amp; assembly</p>
+        <h2 id="quiz-title">Now try it with your own hands</h2>
+        <p class="lead">Reading about a board is one thing; finding the parts yourself is what makes it stick. Both exercises run on the 3D model at the top of the page and work for every board.</p>
+      </header>
+      <div class="cards">
+        <article class="pcard" aria-labelledby="pcard-quiz">
+          <div class="pcard__top">
+            <span class="pcard__ico"><svg class="ico" aria-hidden="true"><use href="#i-target"/></svg></span>
+            <p class="kicker">Quiz · about a minute</p>
+          </div>
+          <h3 id="pcard-quiz">Find the part</h3>
+          <p class="pcard__text">We name a part — you find it on the model and click it. Rotate the board, zoom in and flip it over, just like the real thing.</p>
+          <ol class="steps">
+            <li><span class="steps__n">1</span><p><b>Read the question.</b> “Find the microcontroller — the brain of the board.”</p></li>
+            <li><span class="steps__n">2</span><p><b>Click the part.</b> Not sure? Take a hint, or skip and see the answer.</p></li>
+            <li><span class="steps__n">3</span><p><b>See your score.</b> Only first-try answers without a hint count.</p></li>
+          </ol>
+          <div class="pcard__cta">
+            <button type="button" class="btn" id="quiz-start" data-action="quiz-start">
+              <svg class="ico" aria-hidden="true"><use href="#i-target"/></svg><span id="quiz-start-label">Start the quiz</span>
+            </button>
+            <p class="pcard__info" id="quiz-info"></p>
+          </div>
+        </article>
+
+        <article class="pcard pcard--accent" id="sec-assemble" aria-labelledby="pcard-asm">
+          <div class="pcard__top">
+            <span class="pcard__ico"><svg class="ico" aria-hidden="true"><use href="#i-assemble"/></svg></span>
+            <p class="kicker">Assembly · a few minutes</p>
+          </div>
+          <h3 id="pcard-asm">Take it apart, put it back together</h3>
+          <p class="pcard__text">The board comes apart into a tray of parts on the bench. Put every chip, connector and header back where it belongs and solder it down.</p>
+          <ol class="steps">
+            <li><span class="steps__n">1</span><p><b>Pick a part from the tray.</b> Chips, connectors, headers, buttons.</p></li>
+            <li><span class="steps__n">2</span><p><b>Place it on its footprint.</b> The pads on the bare board show where it goes.</p></li>
+            <li><span class="steps__n">3</span><p><b>Solder it in.</b> When the last joint is done, the board is whole again.</p></li>
+          </ol>
+          <div class="pcard__cta">
+            <button type="button" class="btn btn--accent" id="asm-start" data-action="asm-start">
+              <svg class="ico" aria-hidden="true"><use href="#i-assemble"/></svg><span id="asm-start-label">Assemble it</span>
+            </button>
+            <p class="pcard__info" id="asm-info"></p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Compare ───────────── -->
+  <section class="section compare" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="kicker"><span class="kicker__n">04</span>Compare</p>
+        <h2 id="compare-title">All eight, side by side</h2>
+        <p class="lead">The numbers that decide which board fits a project. Click a row to put that board on the bench — the lesson switches to it too.</p>
+      </header>
+      <div class="table-wrap" id="compare-wrap" role="region" aria-labelledby="compare-title" tabindex="0">
+        <table class="ctable" id="compare-table"></table>
+      </div>
+      <p class="table-note">Prices are typical street prices and vary by seller. “Logic” is the voltage of the I/O pins — never feed 5 V into a 3.3 V board.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__in">
+    <div class="foot__brand">
+      <a class="brand" href="#sec-stage" data-scroll aria-label="Robotics Lab — back to top">
+        <svg class="ico brand__mark" aria-hidden="true"><use href="#i-chip"/></svg>
+        <span class="brand__name">Robotics Lab</span>
+      </a>
+      <p>Every model is built procedurally in your browser: geometry, traces, silkscreen and markings are drawn by code — no ready-made 3D files, no photos.</p>
+    </div>
+    <nav class="foot__nav" aria-label="Footer">
+      <a href="#sec-stage" data-scroll>Boards</a>
+      <a href="#lab" data-scroll>Workbench</a>
+      <a href="#lesson" data-scroll>Lesson</a>
+      <a href="#quiz" data-scroll>Quiz &amp; assembly</a>
+      <a href="#compare" data-scroll>Compare</a>
+      <a href="pcb/board.html?new=1">Auto PCB</a>
+    </nav>
+    <div class="foot__end">
+      <a class="foot__top" href="#sec-stage" data-scroll><svg class="ico" aria-hidden="true"><use href="#i-up"/></svg><span>Back to top</span></a>
+      <p class="foot__meta">three.js · WebGL</p>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="js/lofi.js"></script>
+<script type="module" src="js/track.js"></script>
+<noscript><p class="noscript">The 3D models and the interactive lesson need JavaScript enabled.</p></noscript>
+</body>
+</html>

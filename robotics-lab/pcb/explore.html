@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Explore boards · Etch</title>
+<meta name="description" content="Open-source circuit boards from GitHub, rendered in 3D. Open one to ask Etch about any part.">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Averia+Serif+Libre:wght@400;700&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/explore.css?v=7">
+<link rel="modulepreload" href="js/explore.js">
+<link rel="modulepreload" href="js/common.js">
+<script>
+  // start the library download before any module loads
+  (function () { var w = (new URLSearchParams(location.search).get("world") || "world").replace(/[^a-z0-9_-]/gi, "") || "world";
+    window.__index = fetch(w + "/index.json").then(function (r) { if (!r.ok) throw new Error("index " + r.status); return r.json(); }); window.__index.catch(function () {}); })();
+</script>
+</head>
+<body class="xp">
+<header class="top">
+  <a class="brand" id="homeL" href="/"><span id="logo"></span><span>etch</span></a>
+  <span class="crumb" aria-hidden="true">/</span><span class="here">Explore</span>
+  <span class="grow"></span>
+  <a class="btn ghost sm" id="buildTop" href="board.html?new=1">Build a board</a>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>Real boards, ready to <em>poke at</em>.</h1>
+    <p class="lede">Open-source KiCad projects from GitHub, rendered in 3D. Open one, tap any part and ask Etch what it does.</p>
+    <div class="hero-row">
+      <a class="btn primary" id="buildL" href="board.html?new=1"><span id="plusIc"></span>Build a board</a>
+      <span class="stat" id="stat" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section class="mine" id="mine" hidden aria-labelledby="mineT">
+    <h2 id="mineT">My boards <span>saved in this browser</span></h2>
+    <div class="grid mine-grid" id="mineGrid"></div>
+  </section>
+
+  <section class="mine built" id="built" hidden aria-labelledby="builtT">
+    <h2 id="builtT">Built on Etch <span id="builtN"></span></h2>
+    <div class="grid mine-grid" id="builtGrid"></div>
+    <button class="btn ghost sm built-more" id="builtMore" type="button" hidden>See all</button>
+  </section>
+
+  <div class="cats-wrap">
+    <div class="cats" id="cats" role="group" aria-label="Categories">
+      <div class="goo" aria-hidden="true"><i class="bridge"></i><i class="blob a"></i><i class="blob b"></i></div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="count" id="count">Loading boards…</div>
+    <div class="tools">
+      <div class="search" id="search">
+        <button class="s-btn" id="sBtn" type="button" aria-label="Search boards" aria-controls="q" aria-expanded="false"><span id="sIc"></span></button>
+        <input id="q" type="search" placeholder="Title, owner, repo…" autocomplete="off" spellcheck="false" aria-label="Search boards" tabindex="-1">
+        <button class="s-x" id="sX" type="button" aria-label="Clear search" tabindex="-1"><span id="xIc"></span></button>
+      </div>
+      <button class="sw" id="copyable" type="button" role="switch" aria-checked="false"><span class="track"><span class="knob"></span></span>Copyable only</button>
+      <div class="seg" id="sort" role="radiogroup" aria-label="Sort">
+        <i class="seg-ind" aria-hidden="true"></i>
+        <button type="button" role="radio" data-v="popular" aria-checked="true">Popular</button>
+        <button type="button" role="radio" data-v="recent" aria-checked="false">Recent</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden></div>
+  <div class="sentinel" id="more"></div>
+</main>
+<script type="module" src="js/explore.js"></script>
+<script type="module" src="js/ui/stack-help.js"></script>
+</body>
+</html>
