@@ -1,4 +1,7 @@
 {
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": ".",
   "cleanUrls": false,
   "headers": [
     { "source": "/pcb/config.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },

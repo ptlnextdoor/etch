@@ -24,4 +24,6 @@ The original serves its un-bundled source, so `index.html`, `css/`, `js/` and `v
 
 ## Deploy
 
-    cd robotics-lab && npx vercel deploy --prod
+    cd robotics-lab && npx vercel deploy --prod   # vercel.json forces static (no framework); .vercelignore skips server.mjs
+
+Live: https://robotics-lab-gold.vercel.app
